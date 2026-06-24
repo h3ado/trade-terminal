@@ -1,0 +1,358 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 210 15% 90%;
+
+    --card: 0 0% 2%;
+    --card-foreground: 210 15% 90%;
+
+    --popover: 0 0% 2%;
+    --popover-foreground: 210 15% 90%;
+
+    --primary: 33 100% 50%;
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 0 0% 4%;
+    --secondary-foreground: 210 15% 90%;
+
+    --muted: 0 0% 5%;
+    --muted-foreground: 215 8% 42%;
+
+    --accent: 33 100% 50%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 15% 95%;
+
+    --border: 0 0% 8%;
+    --input: 0 0% 8%;
+    --ring: 33 100% 50%;
+
+    --radius: 0px;
+
+    --surface-deep: 0 0% 0%;
+    --surface-primary: 0 0% 2%;
+    --surface-elevated: 0 0% 5%;
+    --grid-line: 0 0% 8%;
+
+    --positive: 120 60% 45%;
+    --negative: 0 72% 51%;
+    --data-muted: 215 8% 35%;
+
+    --bb-orange: 33 100% 50%;
+    --bb-amber: 40 100% 55%;
+    --bb-blue: 210 80% 55%;
+    --bb-cyan: 185 70% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Lexend', system-ui, sans-serif;
+    font-size: 11px;
+    line-height: 1.35;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Lexend', system-ui, sans-serif;
+    font-weight: 700;
+  }
+
+  /* Make all inputs and buttons inherit Lexend */
+  input, button, select, textarea {
+    font-family: 'Lexend', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .font-mono-data {
+    font-family: 'Lexend', system-ui, sans-serif;
+  }
+
+  .font-body {
+    font-family: 'Lexend', system-ui, sans-serif;
+  }
+
+  .text-positive {
+    color: hsl(var(--positive));
+  }
+
+  .text-negative {
+    color: hsl(var(--negative));
+  }
+
+  .text-data-muted {
+    color: hsl(var(--data-muted));
+  }
+
+  .bg-surface-deep {
+    background-color: hsl(var(--surface-deep));
+  }
+
+  .bg-surface-primary {
+    background-color: hsl(var(--surface-primary));
+  }
+
+  .bg-surface-elevated {
+    background-color: hsl(var(--surface-elevated));
+  }
+
+  .border-grid {
+    border-color: hsl(var(--grid-line));
+  }
+
+  .stat-bar-accent-top::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: hsl(var(--accent));
+  }
+
+  .stat-bar-positive-top::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: hsl(var(--positive));
+  }
+
+  .stat-bar-negative-top::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: hsl(var(--negative));
+  }
+
+  /* Bloomberg-style function key buttons */
+  .bb-func-key {
+    @apply px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wide transition-all duration-100;
+    background: hsl(var(--surface-elevated));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+  .bb-func-key:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    border-color: hsl(var(--accent));
+  }
+  .bb-func-key.active {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    border-color: hsl(var(--accent));
+  }
+
+  /* Bloomberg section header */
+  .bb-section-header {
+    @apply text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-1;
+    color: hsl(var(--accent));
+    background: hsl(var(--surface-deep));
+    border-bottom: 1px solid hsl(var(--accent));
+  }
+
+  /* Bloomberg data cell highlight */
+  .bb-data-highlight {
+    @apply font-mono font-bold;
+    color: hsl(210, 15%, 95%);
+  }
+}
+
+/* Scrollbar - Bloomberg thin dark style */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--surface-deep));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(220, 12%, 18%);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--accent));
+}
+
+/* Animations */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.5s infinite;
+}
+
+/* Bloomberg blinking cursor */
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-blink {
+  animation: blink-cursor 1s step-end infinite;
+}
+
+/* View transition progress bar */
+@keyframes nav-progress {
+  0%   { transform: scaleX(0); transform-origin: left; opacity: 1; }
+  60%  { transform: scaleX(1); transform-origin: left; opacity: 1; }
+  100% { transform: scaleX(1); transform-origin: right; opacity: 0; }
+}
+
+.animate-nav-progress {
+  animation: nav-progress 420ms ease-out forwards;
+}
+
+/* Soft idle pulse for CLI hint */
+@keyframes cli-idle-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
+.animate-cli-idle {
+  animation: cli-idle-pulse 2.2s ease-in-out infinite;
+}
+
+/* Selection color */
+::selection {
+  background: hsl(33, 100%, 50%);
+  color: hsl(0, 0%, 0%);
+}
+
+/* ── Options Insight Engine compatibility shims ── */
+.bg-gradient-terminal { background: hsl(var(--background)); }
+.card-terminal {
+  background: hsl(var(--surface-deep, var(--card)));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+.text-up { color: hsl(var(--positive)); }
+.text-down { color: hsl(var(--negative)); }
+.text-neutral-val { color: hsl(40, 100%, 55%); }
+.bg-chart-up { background-color: hsl(var(--positive)); }
+.bg-chart-down { background-color: hsl(var(--negative)); }
+.bg-chart-neutral { background-color: hsl(40, 100%, 55%); }
+.text-primary-options { color: hsl(var(--accent)); }
+
+/* ── react-grid-layout Bloomberg-terminal overrides ── */
+.react-grid-layout { position: relative; transition: height 200ms ease; }
+.react-grid-item {
+  transition: all 150ms ease;
+  transition-property: left, top, width, height;
+  border-radius: 0;
+}
+.react-grid-item.cssTransforms { transition-property: transform, width, height; }
+.react-grid-item.resizing { z-index: 30; opacity: 0.9; }
+.react-grid-item.react-draggable-dragging { transition: none; z-index: 30; cursor: grabbing; }
+.react-grid-item.react-grid-placeholder {
+  background: hsl(var(--accent) / 0.25) !important;
+  border: 1px dashed hsl(var(--accent));
+  border-radius: 0;
+  opacity: 0.6;
+  transition-duration: 100ms;
+}
+
+/* Tile wrapper: don't clip resize handles (RGL clones them into the child). */
+.launch-tile-wrap { position: relative; }
+.launch-tile-wrap > :first-child { width: 100%; height: 100%; overflow: hidden; }
+
+/* 8-direction resize handles — Bloomberg-styled, visible on hover/resize. */
+.react-grid-item > .react-resizable-handle {
+  background: none;
+  z-index: 30;
+  opacity: 0;
+  transition: opacity 0.12s;
+  transform: none;
+  margin: 0;
+  position: absolute;
+}
+.react-grid-item:hover > .react-resizable-handle,
+.react-grid-item.resizing > .react-resizable-handle {
+  opacity: 1;
+}
+
+/* Edges */
+.react-grid-item > .react-resizable-handle-n,
+.react-grid-item > .react-resizable-handle-s {
+  left: 18px; right: 18px; width: auto; height: 6px; cursor: ns-resize;
+}
+.react-grid-item > .react-resizable-handle-n { top: 0; }
+.react-grid-item > .react-resizable-handle-s { bottom: 0; }
+.react-grid-item > .react-resizable-handle-e,
+.react-grid-item > .react-resizable-handle-w {
+  top: 18px; bottom: 18px; height: auto; width: 6px; cursor: ew-resize;
+}
+.react-grid-item > .react-resizable-handle-e { right: 0; }
+.react-grid-item > .react-resizable-handle-w { left: 0; }
+
+.react-grid-item > .react-resizable-handle-n::after,
+.react-grid-item > .react-resizable-handle-s::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 2px;
+  background: hsl(var(--accent) / 0.7);
+}
+.react-grid-item > .react-resizable-handle-n::after { top: 0; }
+.react-grid-item > .react-resizable-handle-s::after { bottom: 0; }
+.react-grid-item > .react-resizable-handle-e::after,
+.react-grid-item > .react-resizable-handle-w::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 2px;
+  background: hsl(var(--accent) / 0.7);
+}
+.react-grid-item > .react-resizable-handle-e::after { right: 0; }
+.react-grid-item > .react-resizable-handle-w::after { left: 0; }
+
+/* Corners */
+.react-grid-item > .react-resizable-handle-sw,
+.react-grid-item > .react-resizable-handle-nw,
+.react-grid-item > .react-resizable-handle-se,
+.react-grid-item > .react-resizable-handle-ne {
+  width: 18px; height: 18px;
+}
+.react-grid-item > .react-resizable-handle-sw { left: 0; bottom: 0; cursor: sw-resize; }
+.react-grid-item > .react-resizable-handle-se { right: 0; bottom: 0; cursor: se-resize; }
+.react-grid-item > .react-resizable-handle-nw { left: 0; top: 0; cursor: nw-resize; }
+.react-grid-item > .react-resizable-handle-ne { right: 0; top: 0; cursor: ne-resize; }
+
+.react-grid-item > .react-resizable-handle-sw::after,
+.react-grid-item > .react-resizable-handle-se::after,
+.react-grid-item > .react-resizable-handle-nw::after,
+.react-grid-item > .react-resizable-handle-ne::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: hsl(var(--accent));
+  box-shadow: 0 0 0 1px hsl(var(--background));
+}
+.react-grid-item > .react-resizable-handle-sw::after { left: 2px; bottom: 2px; }
+.react-grid-item > .react-resizable-handle-se::after { right: 2px; bottom: 2px; }
+.react-grid-item > .react-resizable-handle-nw::after { left: 2px; top: 2px; }
+.react-grid-item > .react-resizable-handle-ne::after { right: 2px; top: 2px; }
+
+.react-grid-item:hover > .react-resizable-handle::after,
+.react-grid-item.resizing > .react-resizable-handle::after {
+  box-shadow: 0 0 0 1px hsl(var(--background)), 0 0 6px hsl(var(--accent) / 0.6);
+}
+
+

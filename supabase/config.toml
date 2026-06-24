@@ -1,0 +1,43 @@
+project_id = "mrlpkmzswaqrwxembkoa"
+
+[functions.fx-rates]
+verify_jwt = false
+
+[functions.indices]
+verify_jwt = false
+
+[functions.ais-vessels]
+verify_jwt = false
+
+[functions.storms]
+verify_jwt = false
+
+[functions.fred-indicators]
+verify_jwt = false
+
+[functions.coingecko-prices]
+verify_jwt = false
+
+[functions.worldbank-indicators]
+verify_jwt = false
+
+[functions.eia-energy]
+verify_jwt = false
+
+[functions.openaq-air]
+verify_jwt = false
+
+[functions.iss-position]
+verify_jwt = false
+
+[functions.lightning-strikes]
+verify_jwt = false
+
+[functions.acled-events]
+verify_jwt = false
+
+[functions.cftc-cot]
+verify_jwt = false
+
+[functions.options-copilot]
+verify_jwt = false

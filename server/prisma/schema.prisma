@@ -1,0 +1,473 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Replaces Supabase auth.users + public.profiles
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
+  email       String   @unique
+  password    String
+  displayName String?  @map("display_name")
+  avatarUrl   String?  @map("avatar_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  accounts                TradingAccount[]
+  trades                  Trade[]
+  customCompanies         CustomCompany[]
+  preferences             UserPreference[]
+  savedSearches           NewsSavedSearch[]
+  briefLogs               NewsBriefLog[]
+  tradeNewsLinks          TradeNewsLink[]
+  newsQaLogs              NewsQaLog[]
+  quizAttempts            QuizAttempt[]
+  optionStrategyTemplates OptionStrategyTemplate[]
+  optionAlertRules        OptionAlertRule[]
+
+  @@map("users")
+}
+
+model TradingAccount {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  balance   Decimal  @default(0) @db.Decimal(18, 8)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades Trade[]
+
+  @@index([userId])
+  @@map("trading_accounts")
+}
+
+model Trade {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  accountId      String    @map("account_id") @db.Uuid
+  symbol         String
+  side           String
+  instrumentType String?   @map("instrument_type")
+  quantity       Decimal   @default(0) @db.Decimal(18, 8)
+  entryPrice     Decimal?  @map("entry_price") @db.Decimal(18, 8)
+  exitPrice      Decimal?  @map("exit_price") @db.Decimal(18, 8)
+  entryDate      DateTime? @map("entry_date")
+  exitDate       DateTime? @map("exit_date")
+  stopLoss       Decimal?  @map("stop_loss") @db.Decimal(18, 8)
+  takeProfit     Decimal?  @map("take_profit") @db.Decimal(18, 8)
+  fees           Decimal?  @default(0) @db.Decimal(18, 8)
+  pnl            Decimal?  @db.Decimal(18, 8)
+  status         String?
+  strategy       String?
+  setup          String?
+  notes          String?
+  tags           String[]
+  mistakes       String[]
+  rating         Int?
+  screenshots    String[]
+  extra          Json?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account    TradingAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  newsLinks  TradeNewsLink[]
+
+  @@index([userId])
+  @@index([accountId])
+  @@map("trades")
+}
+
+model CustomCompany {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  name       String
+  ticker     String?
+  sector     String?
+  lat        Decimal  @db.Decimal(10, 6)
+  lng        Decimal  @db.Decimal(10, 6)
+  marketCap  Decimal? @map("market_cap") @db.Decimal(20, 2)
+  hq         String?
+  notes      String?
+  overrideId String?  @map("override_id")
+  isDeletion Boolean  @default(false) @map("is_deletion")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([overrideId])
+  @@map("custom_companies")
+}
+
+model UserPreference {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  key       String
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("user_preferences")
+}
+
+model NewsSavedSearch {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  name          String
+  scope         String
+  value         String    @default("")
+  filters       Json      @default("{}")
+  alertEnabled  Boolean   @default(false) @map("alert_enabled")
+  lastSeenAt    DateTime? @map("last_seen_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("news_saved_searches")
+}
+
+model NewsBriefLog {
+  id        BigInt   @id @default(autoincrement())
+  userId    String   @map("user_id") @db.Uuid
+  scope     String
+  value     String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("news_brief_log")
+}
+
+model TradeNewsLink {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  tradeId    String   @map("trade_id") @db.Uuid
+  clusterKey String   @map("cluster_key")
+  headline   String
+  url        String
+  source     String?
+  tone       Decimal? @db.Decimal(5, 4)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trade Trade @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([tradeId])
+  @@index([userId])
+  @@map("trade_news_links")
+}
+
+model NewsXCache {
+  id        String   @id @default(uuid()) @db.Uuid
+  cacheKey  String   @unique @map("cache_key")
+  payload   Json
+  fetchedAt DateTime @default(now()) @map("fetched_at")
+
+  @@index([fetchedAt(sort: Desc)])
+  @@map("news_x_cache")
+}
+
+model NewsGeoEvent {
+  id          String   @id
+  occurredAt  DateTime @map("occurred_at")
+  lat         Float
+  lng         Float
+  eventType   String   @map("event_type")
+  headline    String
+  source      String?
+  country     String?
+  fatalities  Int      @default(0)
+  url         String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([occurredAt(sort: Desc)])
+  @@index([country])
+  @@map("news_geo_events")
+}
+
+model NewsDailyWrap {
+  wrapDate    DateTime @id @map("wrap_date") @db.Date
+  summary     Json
+  generatedAt DateTime @default(now()) @map("generated_at")
+
+  @@map("news_daily_wrap")
+}
+
+model NewsThesisCache {
+  scopeKey    String   @id @map("scope_key")
+  payload     Json
+  generatedAt DateTime @default(now()) @map("generated_at")
+
+  @@map("news_thesis_cache")
+}
+
+model NewsContradictionCluster {
+  id             String   @id @default(uuid()) @db.Uuid
+  entity         String
+  headlineUrls   String[] @map("headline_urls")
+  stanceVariance Decimal  @default(0) @map("stance_variance") @db.Decimal(10, 4)
+  summary        String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@map("news_contradiction_clusters")
+}
+
+model NewsEarningsCache {
+  id                String   @id @default(uuid()) @db.Uuid
+  ticker            String
+  period            String
+  source            String?
+  url               String?
+  transcriptSummary Json     @map("transcript_summary")
+  fetchedAt         DateTime @default(now()) @map("fetched_at")
+
+  @@unique([ticker, period])
+  @@index([ticker, fetchedAt(sort: Desc)])
+  @@map("news_earnings_cache")
+}
+
+model NewsQaLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  headlineUrl String   @map("headline_url")
+  question    String
+  answer      String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("news_qa_log")
+}
+
+model NewsAudioQueue {
+  id          String   @id @default(uuid()) @db.Uuid
+  headlineUrl String   @map("headline_url")
+  title       String
+  tier        Int      @default(1)
+  domain      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  played      Boolean  @default(false)
+
+  @@index([createdAt(sort: Desc)])
+  @@map("news_audio_queue")
+}
+
+model NewsCbDocCache {
+  id          String   @id @default(uuid()) @db.Uuid
+  source      String
+  docUrl      String   @unique @map("doc_url")
+  title       String
+  publishedAt DateTime @map("published_at")
+  summary     Json     @default("{}")
+  fetchedAt   DateTime @default(now()) @map("fetched_at")
+
+  @@index([publishedAt(sort: Desc)])
+  @@map("news_cb_doc_cache")
+}
+
+model EconCalendarEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  source     String?
+  kind       String
+  ts         DateTime
+  country    String?
+  ticker     String?
+  label      String
+  importance Int      @default(1)
+  prior      Decimal? @db.Decimal(18, 6)
+  forecast   Decimal? @db.Decimal(18, 6)
+  actual     Decimal? @db.Decimal(18, 6)
+  unit       String?
+  extra      Json     @default("{}")
+  fetchedAt  DateTime @default(now()) @map("fetched_at")
+
+  @@index([ts, importance(sort: Desc)])
+  @@index([kind])
+  @@index([ticker])
+  @@map("econ_calendar_events")
+}
+
+model CotSnapshot {
+  id          String   @id @default(uuid()) @db.Uuid
+  reportDate  DateTime @unique @map("report_date") @db.Date
+  source      String   @default("CFTC public reporting")
+  marketRows  Int      @default(0) @map("market_rows")
+  legacyRows  Int      @default(0) @map("legacy_rows")
+  disaggRows  Int      @default(0) @map("disagg_rows")
+  tffRows     Int      @default(0) @map("tff_rows")
+  citRows     Int      @default(0) @map("cit_rows")
+  ingestedAt  DateTime @default(now()) @map("ingested_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("cot_snapshots")
+}
+
+model CotMarketHistory {
+  id              String   @id @default(uuid()) @db.Uuid
+  reportDate      DateTime @map("report_date") @db.Date
+  asset           String
+  market          String
+  ticker          String
+  openInterest    Decimal  @default(0) @map("open_interest") @db.Decimal(18, 4)
+  commercials     Decimal  @default(0) @db.Decimal(18, 4)
+  managedMoney    Decimal  @default(0) @map("managed_money") @db.Decimal(18, 4)
+  nonReportable   Decimal  @default(0) @map("non_reportable") @db.Decimal(18, 4)
+  weekChange      Decimal  @default(0) @map("week_change") @db.Decimal(18, 4)
+  fourWeekChange  Decimal  @default(0) @map("four_week_change") @db.Decimal(18, 4)
+  pctRank         Decimal  @default(50) @map("pct_rank") @db.Decimal(5, 2)
+  bias            String   @default("Neutral")
+  raw             Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([reportDate, ticker])
+  @@index([ticker, reportDate(sort: Desc)])
+  @@index([reportDate(sort: Desc), asset])
+  @@map("cot_market_history")
+}
+
+model CotReportHistory {
+  id         String   @id @default(uuid()) @db.Uuid
+  reportDate DateTime @map("report_date") @db.Date
+  reportType String   @map("report_type")
+  market     String
+  ticker     String?
+  rowData    Json     @map("row_data")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([reportDate, reportType, market, ticker])
+  @@index([reportType, reportDate(sort: Desc)])
+  @@map("cot_report_history")
+}
+
+model OptionStrategyTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  ticker    String
+  name      String
+  legs      Json
+  stats     Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("option_strategy_templates")
+}
+
+model OptionAlertRule {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  ticker    String?
+  ruleType  String   @map("rule_type")
+  params    Json     @default("{}")
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("option_alert_rules")
+}
+
+model QuizCache {
+  weekStart   DateTime @id @map("week_start") @db.Date
+  payload     Json
+  generatedAt DateTime @default(now()) @map("generated_at")
+
+  @@map("quiz_cache")
+}
+
+model QuizAttempt {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  weekStart   DateTime @map("week_start") @db.Date
+  score       Int
+  answers     Json
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+  @@map("quiz_attempts")
+}
+
+// ─── Market data cache ────────────────────────────────────────────────────────
+
+model MarketQuote {
+  ticker       String   @id
+  name         String?
+  exchange     String?
+  currency     String   @default("USD")
+  price        Float?
+  open         Float?
+  high         Float?
+  low          Float?
+  prevClose    Float?   @map("prev_close")
+  change       Float?
+  changePct    Float?   @map("change_pct")
+  volume       Float?
+  avgVolume    Float?   @map("avg_volume")
+  weekHigh52   Float?   @map("week_high_52")
+  weekLow52    Float?   @map("week_low_52")
+  isMarketOpen Boolean  @default(false) @map("is_market_open")
+  source       String   @default("unknown")
+  fetchedAt    DateTime @default(now()) @map("fetched_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("market_quotes")
+}
+
+model MarketCandle {
+  ticker    String
+  interval  String
+  date      String
+  open      Float?
+  high      Float?
+  low       Float?
+  close     Float?
+  volume    Float?
+  fetchedAt DateTime @default(now()) @map("fetched_at")
+
+  @@id([ticker, interval, date])
+  @@index([ticker, interval, date(sort: Desc)])
+  @@map("market_candles")
+}
+
+model MarketFundamentals {
+  ticker    String   @id
+  data      Json
+  source    String   @default("unknown")
+  fetchedAt DateTime @default(now()) @map("fetched_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("market_fundamentals")
+}
+
+model MarketPeers {
+  ticker    String   @id
+  peers     Json     @default("[]")
+  source    String   @default("unknown")
+  fetchedAt DateTime @default(now()) @map("fetched_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("market_peers")
+}
