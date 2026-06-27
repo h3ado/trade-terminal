@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Plus, RefreshCw } from 'lucide-react';
+import { apiGet } from '@/lib/api';
 
 const STORAGE_KEY = 'market-watchlist-v1';
 const REFRESH_MS = 60_000;
@@ -56,8 +57,7 @@ export default function WLST() {
   const fetchQuote = useCallback(async (ticker: string) => {
     setQuotes(prev => ({ ...prev, [ticker]: { ...(prev[ticker] ?? {}), ticker, loading: true } as Quote }));
     try {
-      const r = await fetch(`/api/market/security/${encodeURIComponent(ticker)}/overview`);
-      const d = r.ok ? await r.json() : null;
+      const d = await apiGet<Partial<Quote> & { error?: string }>(`/api/market/security/${encodeURIComponent(ticker)}/overview`);
       if (d?.error) throw new Error(d.error);
       setQuotes(prev => ({
         ...prev,
