@@ -252,7 +252,7 @@ export const MILITARY_SPEND_GDP: Record<string, number> = {
   SA: 6.0, AE: 5.5, KW: 5.1, JO: 4.8, OM: 4.5,
   KR: 2.8, SG: 3.1, AU: 2.1, NO: 1.9, GB: 2.3,
   CN: 1.7, IN: 2.4, PK: 3.2,
-  FR: 2.1, DE: 2.1, PL: 4.2, FI: 2.4, SE: 1.7, LV: 2.3, EE: 3.2, LT: 2.9,
+  FR: 2.1, DE: 2.1, FI: 2.4, SE: 1.7, LV: 2.3, EE: 3.2, LT: 2.9,
   TR: 1.5, EG: 1.2, MA: 3.3, NG: 0.6, ZA: 0.8,
   CA: 1.4, JP: 1.2, IT: 1.4, ES: 1.3, NL: 1.8, BE: 1.2,
   CH: 0.7, AT: 0.8, PT: 1.5, CZ: 2.1, HU: 2.1, RO: 1.7,
@@ -272,7 +272,7 @@ export const FX_RESERVES_MONTHS: Record<string, number> = {
   RU: 16, KZ: 6, UA: 4,
   NO: 12, CH: 18, CZ: 8, PL: 6, HU: 5, RO: 5,
   AU: 4, NZ: 4, CA: 3,
-  US: 1, GB: 1, DE: 1, FR: 1, IT: 1, JP: 22,
+  US: 1, GB: 1, DE: 1, FR: 1, IT: 1,
   TR: 3, IL: 15,
 };
 
