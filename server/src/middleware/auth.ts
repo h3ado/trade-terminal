@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { jwtSecret } from '../lib/env';
 
 export interface AuthRequest extends Request {
   userId?: string;
@@ -12,7 +13,7 @@ export function verifyJwt(req: AuthRequest, res: Response, next: NextFunction): 
     return;
   }
   try {
-    const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET!) as { sub: string };
+    const payload = jwt.verify(header.slice(7), jwtSecret()) as { sub: string };
     req.userId = payload.sub;
     next();
   } catch {

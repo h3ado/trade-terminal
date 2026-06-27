@@ -31,6 +31,24 @@ npm run dev
 
 Frontend runs on `http://localhost:8080`. Vite proxies `/api` to `http://localhost:3001`.
 
+For backend-only work:
+
+```sh
+npm run db:start
+npm run db:migrate --prefix server
+npm run dev:server
+```
+
+The Express server runs on `http://localhost:3001`.
+
+If Docker Desktop is not installed, the local database works with Homebrew Colima:
+
+```sh
+brew install docker docker-compose colima
+colima start
+npm run db:start
+```
+
 ## Environment
 
 Root `.env`:
