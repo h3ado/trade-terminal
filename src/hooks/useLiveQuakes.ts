@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { apiGet } from '@/lib/api';
+import { usePolledApi } from './usePolledApi';
 
 export type LiveQuake = {
   id: string;
@@ -14,31 +13,16 @@ export type LiveQuake = {
 };
 
 const REFRESH_MS = 5 * 60_000; // 5 minutes
+const EMPTY_QUAKES: LiveQuake[] = [];
+const selectQuakes = (data: { quakes?: LiveQuake[] }) => data.quakes ?? EMPTY_QUAKES;
 
 export function useLiveQuakes() {
-  const [quakes, setQuakes] = useState<LiveQuake[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const data = await apiGet<{ quakes?: LiveQuake[] }>('/api/market/events/usgs-quakes');
-        if (cancelled) return;
-        setQuakes((data?.quakes ?? []) as LiveQuake[]);
-        setError(null);
-      } catch (e: any) {
-        if (!cancelled) setError(String(e?.message ?? e));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    const id = window.setInterval(load, REFRESH_MS);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
+  const { value: quakes, loading, error } = usePolledApi({
+    path: '/api/market/events/usgs-quakes',
+    intervalMs: REFRESH_MS,
+    initial: EMPTY_QUAKES,
+    trackLoading: true,
+    select: selectQuakes,
+  });
   return { quakes, loading, error };
 }

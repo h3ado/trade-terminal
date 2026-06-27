@@ -2,8 +2,7 @@
  * NASA EONET open natural events — volcanoes, storms, drought, etc.
  * Refreshed every 30 min — matches the edge cache.
  */
-import { useEffect, useState } from 'react';
-import { apiGet } from '@/lib/api';
+import { usePolledApi } from './usePolledApi';
 
 export type EonetEvent = {
   id: string;
@@ -17,30 +16,15 @@ export type EonetEvent = {
 };
 
 const REFRESH_MS = 30 * 60_000;
+const EMPTY_EVENTS: EonetEvent[] = [];
+const selectEvents = (data: { events?: EonetEvent[] }) => data.events ?? EMPTY_EVENTS;
 
 export function useLiveEonet() {
-  const [events, setEvents] = useState<EonetEvent[]>([]);
-  const [live, setLive] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const data = await apiGet<{ events?: EonetEvent[] }>('/api/market/events/nasa-eonet');
-        if (cancelled) return;
-        const next = (data?.events ?? []) as EonetEvent[];
-        setEvents(next);
-        setLive(next.length > 0);
-        setError(null);
-      } catch (e: any) {
-        if (!cancelled) { setError(String(e?.message ?? e)); setLive(false); }
-      }
-    };
-    load();
-    const id = window.setInterval(load, REFRESH_MS);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
+  const { value: events, live, error } = usePolledApi({
+    path: '/api/market/events/nasa-eonet',
+    intervalMs: REFRESH_MS,
+    initial: EMPTY_EVENTS,
+    select: selectEvents,
+  });
   return { events, live, error };
 }
