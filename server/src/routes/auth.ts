@@ -3,11 +3,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma';
 import { verifyJwt, AuthRequest } from '../middleware/auth';
+import { jwtSecret } from '../lib/env';
 
 const router = Router();
 
 function signToken(userId: string) {
-  return jwt.sign({ sub: userId }, process.env.JWT_SECRET!, { expiresIn: '7d' });
+  return jwt.sign({ sub: userId }, jwtSecret(), { expiresIn: '7d' });
 }
 
 router.post('/register', async (req, res) => {

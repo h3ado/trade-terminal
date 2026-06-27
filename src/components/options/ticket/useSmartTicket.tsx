@@ -3,7 +3,7 @@
 import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { apiPost } from "@/lib/api";
 
 export interface TicketLeg {
@@ -94,9 +94,9 @@ function SmartTicketDialog({ payload, onClose }: { payload: TicketPayload | null
         ticker, name: `${ticker} ${legs.length}-leg`,
         legs, stats: { netDebit, avgLiq, slipBps },
       });
-      toast({ title: "Template saved" });
+      toast.success("Template saved");
     } catch (e) {
-      toast({ title: "Save failed", description: e instanceof Error ? e.message : "Unknown" });
+      toast.error("Save failed", { description: e instanceof Error ? e.message : "Unknown" });
     } finally { setWorking(false); }
   };
 
@@ -176,9 +176,9 @@ function SmartTicketDialog({ payload, onClose }: { payload: TicketPayload | null
           <div className="flex gap-2 pt-2 border-t border-border">
             <button onClick={saveTemplate} disabled={working}
               className="px-3 py-1.5 text-[10px] font-mono border border-border text-foreground hover:border-accent hover:text-accent disabled:opacity-30">SAVE TEMPLATE</button>
-            <button onClick={() => toast({ title: "Dry-run", description: `Would route ${legs.length} legs via IBKR bridge` })}
+            <button onClick={() => toast("Dry-run", { description: `Would route ${legs.length} legs via IBKR bridge` })}
               className="px-3 py-1.5 text-[10px] font-mono border border-border text-foreground hover:border-accent hover:text-accent">DRY RUN</button>
-            <button onClick={() => toast({ title: "Order submitted (mock)", description: `${ticker} ${legs.length}-leg @ mid` })}
+            <button onClick={() => toast.success("Order submitted (mock)", { description: `${ticker} ${legs.length}-leg @ mid` })}
               className="ml-auto px-4 py-1.5 text-[10px] font-mono bg-accent text-accent-foreground font-bold">SEND</button>
             <button onClick={onClose} className="px-2 py-1.5 text-muted-foreground hover:text-foreground"><X size={14} /></button>
           </div>

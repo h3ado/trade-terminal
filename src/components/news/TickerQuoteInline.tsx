@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiGet } from '@/lib/api';
 
 interface Quote {
   ticker: string;
@@ -28,8 +29,7 @@ export default function TickerQuoteInline({ ticker }: Props) {
     let cancelled = false;
     setLoading(true);
     setQuote(null);
-    fetch(`/api/market/security/${encodeURIComponent(ticker)}/overview`)
-      .then(r => r.ok ? r.json() : null)
+    apiGet<Quote>(`/api/market/security/${encodeURIComponent(ticker)}/overview`)
       .then(d => {
         if (!cancelled && d?.price != null) setQuote({ ticker, price: d.price, changePct: d.changePct, name: d.name });
       })

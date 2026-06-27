@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { MacroTab, macroTabs } from '@/components/TopNav';
-import { FxTab, fxTabs } from '@/components/ForexNav';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { type MacroTab, buildTrail, macroTabs, viewById } from '@/config/views';
+import { fxTabs, type FxTab } from '@/config/fx';
+import { optionsModules } from '@/config/options';
 import { PrivacyProvider, usePrivacy } from '@/contexts/PrivacyContext';
 import { MacroCountryProvider } from '@/contexts/MacroCountryContext';
 import { FxBaseProvider } from '@/contexts/FxBaseContext';
@@ -13,114 +14,57 @@ import TopNav from '@/components/TopNav';
 import ForexNav from '@/components/ForexNav';
 import ToolsPanel from '@/components/ToolsPanel';
 import NavBreadcrumb from '@/components/NavBreadcrumb';
-import TradingCmdBar from '@/components/TradingCmdBar';
-import DashboardView from '@/components/views/DashboardView';
-import TradesView from '@/components/views/TradesView';
-import AnalyticsView from '@/components/views/AnalyticsView';
-import CalendarView from '@/components/views/CalendarView';
-import PerformanceView from '@/components/views/PerformanceView';
-import JournalView from '@/components/views/JournalView';
-import PlaybooksView from '@/components/views/PlaybooksView';
-import MistakesView from '@/components/views/MistakesView';
-import GoalsView from '@/components/views/GoalsView';
-import MacroView from '@/components/views/MacroView';
-import ForexView from '@/components/views/ForexView';
-import GlobeView from '@/components/views/GlobeView';
-import COTData from '@/components/macro/COTData';
-import NewsView from '@/components/views/NewsView';
-import NewsQuiz from '@/components/news/NewsQuiz';
-import OptionsView from '@/components/views/OptionsView';
 import CommandPalette from '@/components/CommandPalette';
 import EconCalendarOverlay from '@/components/calendar/EconCalendarOverlay';
 import BloombergFKeyBar from '@/components/terminal/BloombergFKeyBar';
-import Launchpad from '@/components/launchpad/Launchpad';
-import SecurityView from '@/components/views/SecurityView';
-import WEIMonitor from '@/components/monitors/WEIMonitor';
-import WBMonitor from '@/components/monitors/WBMonitor';
-import GLCOMonitor from '@/components/monitors/GLCOMonitor';
-import TOPMonitor from '@/components/monitors/TOPMonitor';
-import { ECO, ECST, ECFC, ECWB, STAT, ECTR, COUN, OECD, EIU, FED, FOMC, FFIP, CENB, SRSK, WLST } from '@/components/macro/cmd';
 import { useNavHistory } from '@/hooks/useNavHistory';
 import type { NewsScope } from '@/hooks/useGdeltNews';
 
-const VIEW_LABELS: Record<ViewType, string> = {
-  dashboard: 'Dashboard',
-  trades: 'All Trades',
-  analytics: 'Analytics',
-  calendar: 'Calendar',
-  performance: 'Performance',
-  journal: 'Journal',
-  playbooks: 'Playbooks',
-  mistakes: 'Mistakes',
-  goals: 'Goals',
-  macro: 'Macro',
-  forex: 'Forex',
-  cot: 'COT Data',
-  globe: 'Markets Globe',
-  news: 'News Terminal',
-  quiz: 'Weekly Quiz',
-  options: 'Options',
-  launchpad: 'Launchpad',
-  mwei: 'WEI Monitor',
-  mwb: 'WB Monitor',
-  mglco: 'GLCO Monitor',
-  mtop: 'TOP Monitor',
-  meco: 'ECO · Econ Calendar',
-  mecst: 'ECST · Stats Matrix',
-  mecfc: 'ECFC · Forecasts',
-  mecwb: 'ECWB · Workbook',
-  mstat: 'STAT · Directory',
-  mectr: 'ECTR · Trade Flows',
-  mcoun: 'COUN · Country',
-  moecd: 'OECD Indicators',
-  meiu: 'EIU · Country Risk',
-  mfed: 'FED · Reserve Portal',
-  mfomc: 'FOMC Archive',
-  mffip: 'FFIP · Implied Probs',
-  mcenb: 'CENB · Central Banks',
-  msrsk: 'SRSK · Sovereign Risk',
-  security: 'Security',
-};
-
-const TRADING_VIEWS: ViewType[] = ['dashboard', 'trades', 'analytics', 'calendar', 'performance', 'journal', 'playbooks', 'mistakes', 'goals'];
-
-function buildTrail(view: ViewType, macroTab: MacroTab, fxTab: FxTab): { trail: string[]; label: string } {
-  if (view === 'macro') {
-    const t = macroTabs.find(m => m.id === macroTab);
-    const seg = t ? `${t.label} (${t.code})` : 'Overview';
-    return { trail: ['MACRO', seg], label: `MACRO › ${seg}` };
-  }
-  if (view === 'forex') {
-    const t = fxTabs.find(f => f.id === fxTab);
-    const seg = t ? `${t.label} (${t.code})` : 'Overview';
-    return { trail: ['FOREX', seg], label: `FOREX › ${seg}` };
-  }
-  if (TRADING_VIEWS.includes(view)) {
-    return { trail: ['TRADING', VIEW_LABELS[view]], label: `TRADING › ${VIEW_LABELS[view]}` };
-  }
-  return { trail: [VIEW_LABELS[view]], label: VIEW_LABELS[view] };
-}
+const isView = (v: string | null): v is ViewType => !!v && v in viewById;
+const isMacroTab = (v: string | null): v is MacroTab => !!v && macroTabs.some(t => t.id === v);
+const isFxTab = (v: string | null): v is FxTab => !!v && fxTabs.some(t => t.id === v);
+const isOptionsTab = (v: string | null): v is OptionsTab => !!v && optionsModules.some(t => t.id === v);
 
 function IndexInner() {
-  const [activeView, setActiveView] = useState<ViewType>('launchpad');
+  const urlState = useMemo(() => {
+    const qs = new URLSearchParams(window.location.search);
+    const view = isView(qs.get('view')) ? qs.get('view') as ViewType : 'launchpad';
+    return {
+      view,
+      macroTab: isMacroTab(qs.get('macro')) ? qs.get('macro') as MacroTab : 'overview',
+      fxTab: isFxTab(qs.get('fx')) ? qs.get('fx') as FxTab : 'home',
+      securityTicker: (qs.get('ticker') || 'AAPL').toUpperCase(),
+      optionsArgs: {
+        tab: isOptionsTab(qs.get('tab')) ? qs.get('tab') as OptionsTab : 'dash',
+        ticker: (qs.get('ticker') || 'SPY').toUpperCase(),
+        sub: qs.get('sub') || undefined,
+      },
+    };
+  }, []);
+
+  const [activeView, setActiveView] = useState<ViewType>(urlState.view);
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [toolsWidth, setToolsWidth] = useState(320);
-  const [macroTab, setMacroTab] = useState<MacroTab>('overview');
-  const [fxTab, setFxTab] = useState<FxTab>('home');
-  const [securityTicker, setSecurityTicker] = useState<string>('AAPL');
+  const [macroTab, setMacroTab] = useState<MacroTab>(urlState.macroTab);
+  const [fxTab, setFxTab] = useState<FxTab>(urlState.fxTab);
+  const [securityTicker, setSecurityTicker] = useState<string>(urlState.securityTicker);
   const [newsArgs, setNewsArgs] = useState<{ scope: NewsScope; value: string; ai: boolean; topic?: string; pinOnly?: boolean; sort?: 'recent' | 'velocity'; source?: 'all' | 'x' | 'potus' | 'fed'; rightPane?: 'detail' | 'map' | 'heat' }>({ scope: 'global', value: '', ai: false });
-  const [optionsArgs, setOptionsArgs] = useState<{ tab: OptionsTab; ticker: string; sub?: string; earnFilter?: import('@/hooks/useEarningsCalendar').EarnFilter }>({ tab: 'dash', ticker: 'SPY' });
+  const [optionsArgs, setOptionsArgs] = useState<{ tab: OptionsTab; ticker: string; sub?: string; earnFilter?: import('@/hooks/useEarningsCalendar').EarnFilter }>(urlState.optionsArgs);
   const [progressKey, setProgressKey] = useState(0);
   const resizingRef = useRef(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
 
   const initial = useMemo(() => {
-    const { trail, label } = buildTrail('launchpad', 'overview', 'home');
-    return { view: 'launchpad' as ViewType, macroTab: 'overview' as MacroTab, fxTab: 'home' as FxTab, label, trail };
-  }, []);
+    const { trail, label } = buildTrail(urlState.view, urlState.macroTab, urlState.fxTab);
+    return { view: urlState.view, macroTab: urlState.macroTab, fxTab: urlState.fxTab, label, trail };
+  }, [urlState]);
   const nav = useNavHistory(initial);
+
+  const navigate = useCallback((view: ViewType) => {
+    setActiveView(view);
+  }, []);
 
   // Push every nav change into history + trigger progress bar.
   useEffect(() => {
@@ -129,6 +73,20 @@ function IndexInner() {
     setProgressKey(k => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView, macroTab, fxTab]);
+
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    qs.set('view', activeView);
+    if (activeView === 'macro') qs.set('macro', macroTab);
+    if (activeView === 'forex') qs.set('fx', fxTab);
+    if (activeView === 'options') {
+      qs.set('tab', optionsArgs.tab);
+      qs.set('ticker', optionsArgs.ticker);
+      if (optionsArgs.sub) qs.set('sub', optionsArgs.sub);
+    }
+    if (activeView === 'security') qs.set('ticker', securityTicker);
+    window.history.replaceState(null, '', `/?${qs.toString()}`);
+  }, [activeView, macroTab, fxTab, optionsArgs, securityTicker]);
 
   // Sync back/forward changes from history -> local state.
   useEffect(() => {
@@ -225,55 +183,11 @@ function IndexInner() {
     return () => window.removeEventListener('lovable:security-args', handler);
   }, []);
 
-  const renderView = () => {
-    switch (activeView) {
-      case 'dashboard': return <DashboardView />;
-      case 'trades': return <TradesView />;
-      case 'analytics': return <AnalyticsView />;
-      case 'calendar': return <CalendarView />;
-      case 'performance': return <PerformanceView />;
-      case 'journal': return <JournalView />;
-      case 'playbooks': return <PlaybooksView />;
-      case 'mistakes': return <MistakesView />;
-      case 'goals': return <GoalsView />;
-      case 'macro': return <MacroView activeTab={macroTab} />;
-      case 'forex': return <ForexView activeTab={fxTab} onTabChange={setFxTab} />;
-      case 'cot': return <COTData />;
-      case 'globe': return <GlobeView />;
-      case 'news': return <NewsView initialScope={newsArgs.scope} initialValue={newsArgs.value} initialAiBrief={newsArgs.ai} initialTopic={newsArgs.topic} initialPinOnly={newsArgs.pinOnly} initialSort={newsArgs.sort} initialSource={newsArgs.source} initialRightPane={newsArgs.rightPane} />;
-      case 'quiz': return <NewsQuiz />;
-      case 'options': return <OptionsView initialTab={optionsArgs.tab} initialTicker={optionsArgs.ticker} initialSub={optionsArgs.sub} initialEarnFilter={optionsArgs.earnFilter} />;
-      case 'launchpad': return <Launchpad />;
-      case 'mwei': return <WEIMonitor />;
-      case 'mwb': return <WBMonitor />;
-      case 'mglco': return <GLCOMonitor />;
-      case 'mtop': return <TOPMonitor />;
-      case 'meco': return <ECO />;
-      case 'mecst': return <ECST />;
-      case 'mecfc': return <ECFC />;
-      case 'mecwb': return <ECWB />;
-      case 'mstat': return <STAT />;
-      case 'mectr': return <ECTR />;
-      case 'mcoun': return <COUN />;
-      case 'moecd': return <OECD />;
-      case 'meiu': return <EIU />;
-      case 'mfed': return <FED />;
-      case 'mfomc': return <FOMC />;
-      case 'mffip': return <FFIP />;
-      case 'mcenb': return <CENB />;
-      case 'msrsk': return <SRSK />;
-      case 'mwlst': return <WLST />;
-      case 'security': return <SecurityView ticker={securityTicker} />;
-      default: return <Launchpad />;
-    }
-  };
-
-  const isTradingView = TRADING_VIEWS.includes(activeView);
   const viewKey = `${activeView}:${macroTab}:${fxTab}`;
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      <TerminalHeader onAddTrade={() => setShowAddModal(true)} onNavigate={setActiveView} onMacroTab={setMacroTab} onFxTab={(t) => { setFxTab(t); setActiveView('forex'); }} />
+      <TerminalHeader onAddTrade={() => setShowAddModal(true)} onNavigate={navigate} onMacroTab={setMacroTab} onFxTab={(t) => { setFxTab(t); navigate('forex'); }} />
       <NavBreadcrumb
         trail={nav.current?.trail ?? ['Dashboard']}
         canBack={nav.canBack}
@@ -307,13 +221,12 @@ function IndexInner() {
         )}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {(() => {
-            const fullBleed = ['globe','cot','news','forex','journal','quiz','launchpad','options','security','mwei','mwb','mglco','mtop','meco','mecst','mecfc','mecwb','mstat','mectr','mcoun','moecd','meiu','mfed','mfomc','mffip','mcenb','msrsk','mwlst'];
-            const isFullBleed = fullBleed.includes(activeView);
+            const isFullBleed = !!viewById[activeView].fullBleed;
             const mainPad = ['news','options'].includes(activeView) || isFullBleed ? 'p-0' : 'p-4';
             return (
               <>
                 {!isFullBleed && (
-                  <TopNav activeView={activeView} onViewChange={setActiveView} activeMacroTab={macroTab} onMacroTabChange={setMacroTab} />
+                  <TopNav activeView={activeView} onViewChange={navigate} activeMacroTab={macroTab} onMacroTabChange={setMacroTab} />
                 )}
                 {activeView === 'forex' && (
                   <ForexNav activeTab={fxTab} onTabChange={setFxTab} />
@@ -330,7 +243,7 @@ function IndexInner() {
                     </button>
                   )}
                   <div key={viewKey} className={`animate-fade-in ${isFullBleed ? 'flex-1 min-h-0 flex flex-col' : ''}`}>
-                    {renderView()}
+                    {viewById[activeView].render({ macroTab, fxTab, setFxTab, newsArgs, optionsArgs, securityTicker })}
                   </div>
                 </main>
               </>
@@ -338,7 +251,7 @@ function IndexInner() {
           })()}
         </div>
       </div>
-      <BloombergFKeyBar onLaunchpad={() => setActiveView('launchpad')} />
+      <BloombergFKeyBar onLaunchpad={() => navigate('launchpad')} />
       {showAddModal && <AddTradeModal onClose={() => setShowAddModal(false)} />}
       <EconCalendarOverlay />
       <CommandPalette />

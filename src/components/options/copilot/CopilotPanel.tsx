@@ -2,7 +2,8 @@
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import { X, Send } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/components/ui/sonner";
+import { apiPost } from "@/lib/api";
 
 interface Msg { role: "user" | "assistant"; content: string }
 
@@ -47,48 +48,11 @@ export default function CopilotPanel({ open, onClose, ticker, module }: Props) {
     };
 
     try {
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/options-copilot`;
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({ messages: next, context: { ticker, module } }),
-      });
-      if (resp.status === 429) { toast({ title: "Rate limited", description: "Try again shortly" }); setStreaming(false); return; }
-      if (resp.status === 402) { toast({ title: "Credits required", description: "Add credits in Settings → Workspace" }); setStreaming(false); return; }
-      if (!resp.ok || !resp.body) throw new Error("Stream failed");
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let done = false;
-      while (!done) {
-        const { done: d, value } = await reader.read();
-        if (d) break;
-        buffer += decoder.decode(value, { stream: true });
-        let nl: number;
-        while ((nl = buffer.indexOf("\n")) !== -1) {
-          let line = buffer.slice(0, nl);
-          buffer = buffer.slice(nl + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-          const json = line.slice(6).trim();
-          if (json === "[DONE]") { done = true; break; }
-          try {
-            const parsed = JSON.parse(json);
-            const c = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (c) upsert(c);
-          } catch {
-            buffer = line + "\n" + buffer; break;
-          }
-        }
-      }
+      const resp = await apiPost<{ text?: string }>("/api/market/options/options-copilot", { messages: next, ticker, module });
+      upsert(resp.text ?? "");
     } catch (e) {
       console.error(e);
-      toast({ title: "Copilot error", description: e instanceof Error ? e.message : "Unknown" });
+      toast.error("Copilot error", { description: e instanceof Error ? e.message : "Unknown" });
     } finally {
       setStreaming(false);
     }

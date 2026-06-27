@@ -2,8 +2,7 @@
  * Direct ACLED conflict events feed for the 2D map. Server-cached 30 min;
  * we re-poll every 5 min so heat clusters animate in roughly real time.
  */
-import { useEffect, useState } from 'react';
-import { apiGet } from '@/lib/api';
+import { usePolledApi } from './usePolledApi';
 
 export type AcledEvent = {
   id: string;
@@ -20,31 +19,16 @@ export type AcledEvent = {
 };
 
 const REFRESH_MS = 5 * 60_000;
+const EMPTY_EVENTS: AcledEvent[] = [];
+const selectEvents = (data: { events?: AcledEvent[] }) => data.events ?? EMPTY_EVENTS;
 
 export function useAcledEvents(enabled: boolean) {
-  const [events, setEvents] = useState<AcledEvent[]>([]);
-  const [live, setLive] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const data = await apiGet<{ events?: AcledEvent[] }>('/api/market/events/acled-events');
-        if (cancelled) return;
-        const next = (data?.events ?? []) as AcledEvent[];
-        setEvents(next);
-        setLive(next.length > 0);
-        setError(null);
-      } catch (e: any) {
-        if (!cancelled) { setError(String(e?.message ?? e)); setLive(false); }
-      }
-    };
-    load();
-    const id = window.setInterval(load, REFRESH_MS);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [enabled]);
-
+  const { value: events, live, error } = usePolledApi({
+    path: '/api/market/events/acled-events',
+    intervalMs: REFRESH_MS,
+    initial: EMPTY_EVENTS,
+    enabled,
+    select: selectEvents,
+  });
   return { events, live, error };
 }

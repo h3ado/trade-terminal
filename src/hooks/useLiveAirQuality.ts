@@ -1,6 +1,5 @@
 /** OpenAQ live PM2.5 stations. Refreshed every 10 min. */
-import { useEffect, useState } from 'react';
-import { apiGet } from '@/lib/api';
+import { usePolledApi } from './usePolledApi';
 
 export type AirStation = {
   id: string;
@@ -17,31 +16,16 @@ export type AirStation = {
 };
 
 const REFRESH_MS = 10 * 60_000;
+const EMPTY_STATIONS: AirStation[] = [];
+const selectStations = (data: { stations?: AirStation[] }) => data.stations ?? EMPTY_STATIONS;
 
 export function useLiveAirQuality(enabled: boolean) {
-  const [stations, setStations] = useState<AirStation[]>([]);
-  const [live, setLive] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const data = await apiGet<{ stations?: AirStation[] }>('/api/market/events/openaq-air');
-        if (cancelled) return;
-        const next = (data?.stations ?? []) as AirStation[];
-        setStations(next);
-        setLive(next.length > 0);
-        setError(null);
-      } catch (e: any) {
-        if (!cancelled) { setError(String(e?.message ?? e)); setLive(false); }
-      }
-    };
-    load();
-    const id = window.setInterval(load, REFRESH_MS);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [enabled]);
-
+  const { value: stations, live, error } = usePolledApi({
+    path: '/api/market/events/openaq-air',
+    intervalMs: REFRESH_MS,
+    initial: EMPTY_STATIONS,
+    enabled,
+    select: selectStations,
+  });
   return { stations, live, error };
 }

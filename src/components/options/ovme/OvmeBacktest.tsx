@@ -13,7 +13,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { fmtUsd } from "../shared/mockSeries";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { apiPost } from "@/lib/api";
 import { ExpandableResponsiveContainer } from '@/components/shared/ExpandChart';
 
@@ -36,16 +36,16 @@ export default function OvmeBacktest({ deal, redact }: Props) {
     setLegs(legs.map(l => l.id === id ? { ...l, ...patch } : l));
 
   const saveTemplate = async () => {
-    if (!templateName.trim()) { toast({ title: "Name required" }); return; }
+    if (!templateName.trim()) { toast.error("Name required"); return; }
     setSaving(true);
     try {
       await apiPost('/api/option-strategy-templates', {
         ticker: deal.ticker, name: templateName, legs,
         stats: { winRate: stats.winRate, sharpe: stats.sharpe, profitFactor: stats.profitFactor, totalPnl: stats.totalPnl },
       });
-      toast({ title: "Template saved" });
+      toast.success("Template saved");
       setTemplateName("");
-    } catch (e: any) { toast({ title: "Save failed", description: e.message }); }
+    } catch (e: any) { toast.error("Save failed", { description: e.message }); }
     finally { setSaving(false); }
   };
 

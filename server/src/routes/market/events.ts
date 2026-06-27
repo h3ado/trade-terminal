@@ -11,6 +11,44 @@ function makeCache<T>(ttlMs: number) {
   };
 }
 
+// ─── GDELT event density ────────────────────────────────────────────────────
+const gdeltCache = makeCache<unknown>(15 * 60_000);
+const GDELT_QUERY = '(protest OR sanction OR conflict OR strike OR war OR coup OR attack)';
+const GDELT_CENTROID: Record<string, [number, number]> = {
+  'United States': [-98, 39], China: [105, 35], Russia: [50, 60], Ukraine: [31, 49],
+  'United Kingdom': [-2, 54], Germany: [10, 51], France: [2.5, 47], India: [78, 22],
+  Japan: [138, 36], Iran: [53, 32], Israel: [35, 31], Turkey: [35, 39], Brazil: [-52, -10],
+  Mexico: [-102, 23], Canada: [-95, 56], Australia: [134, -25], Indonesia: [113, -2],
+  'South Africa': [25, -29], Egypt: [30, 27], Nigeria: [8, 10], Spain: [-3, 40], Italy: [12, 42],
+};
+
+router.get('/gdelt-events', async (_req, res) => {
+  const cached = gdeltCache.get();
+  if (cached) { res.json(cached); return; }
+  try {
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(GDELT_QUERY)}&mode=ArtList&format=JSON&maxrecords=75&timespan=1d&sort=DateDesc`;
+    const r = await fetch(url, { headers: { 'User-Agent': 'trade-terminal/1.0' } });
+    if (!r.ok) throw new Error(`GDELT ${r.status}`);
+    const json = await r.json() as any;
+    const grid = new Map<string, { lat: number; lng: number; count: number; sample: string[] }>();
+    for (const a of json.articles ?? []) {
+      const centroid = GDELT_CENTROID[String(a.sourcecountry ?? '').trim()];
+      if (!centroid) continue;
+      const [lng, lat] = centroid;
+      const cell = { lat: Math.round(lat / 5) * 5, lng: Math.round(lng / 5) * 5 };
+      const key = `${cell.lng}|${cell.lat}`;
+      const cur = grid.get(key) ?? { ...cell, count: 0, sample: [] };
+      cur.count += 1;
+      const title = String(a.title ?? '').trim();
+      if (title && cur.sample.length < 3) cur.sample.push(title.slice(0, 80));
+      grid.set(key, cur);
+    }
+    const data = { cells: [...grid.values()].map(c => ({ ...c, avgTone: 0 })), fetchedAt: Date.now() };
+    gdeltCache.set(data);
+    res.json(data);
+  } catch (e) { res.json({ cells: [], fetchedAt: Date.now(), fallback: true, error: String(e) }); }
+});
+
 // ─── ACLED events ────────────────────────────────────────────────────────────
 const acledCache = makeCache<unknown>(30 * 60_000);
 

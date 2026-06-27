@@ -46,7 +46,7 @@ export default function AiBriefPanel({ scope, value, headlines, autoOnMount }: P
             Generate AI Brief ({headlines.length} headlines)
           </button>
           <p className="text-[9px] font-mono text-muted-foreground mt-2">
-            Summarizes the current cluster via Lovable AI. Limit: 10 briefs/hour.
+            Summarizes the current cluster with the configured AI provider. Limit: 10 briefs/hour.
           </p>
         </div>
       )}

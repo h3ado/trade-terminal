@@ -1,60 +1,12 @@
 import { ViewType, calcTotalPnl } from '@/types/trade';
+import { macroTabs, tradingViews, viewById, type MacroTab } from '@/config/views';
 import { useMacroCountry } from '@/contexts/MacroCountryContext';
 import { usePrivacy } from '@/contexts/PrivacyContext';
 import { useTrades } from '@/contexts/TradeContext';
 import { ChevronDown, X, Plus, Pencil, Trash2, Check } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
-export type MacroTab = 'overview' | 'markets' | 'yields' | 'fx' | 'commodities' | 'central' | 'calendar' | 'sectors' | 'fedwatch' | 'volatility' | 'credit' | 'pmi' | 'labor' | 'housing' | 'money' | 'gdp' | 'inflation' | 'tradeflow' | 'sovereign' | 'globalrates' | 'supplychain' | 'sentiment' | 'fiscal' | 'debt' | 'crypto' | 'realrates' | 'bop' | 'energy' | 'mfg' | 'consumer' | 'fci' | 'wei' | 'weif' | 'wpe';
-
-const tradingNavItems: { view: ViewType; label: string; code: string }[] = [
-  { view: 'dashboard', label: 'Dashboard', code: 'DASH' },
-  { view: 'trades', label: 'All Trades', code: 'TRD' },
-  { view: 'analytics', label: 'Analytics', code: 'ANLT' },
-  { view: 'calendar', label: 'Calendar', code: 'CAL' },
-  { view: 'performance', label: 'Performance', code: 'PERF' },
-  { view: 'journal', label: 'Journal', code: 'JRNL' },
-  { view: 'playbooks', label: 'Playbooks', code: 'PLAY' },
-  { view: 'mistakes', label: 'Mistakes', code: 'MSTK' },
-  { view: 'goals', label: 'Goals', code: 'GOAL' },
-];
-
-export const macroTabs: { id: MacroTab; label: string; code: string }[] = [
-  { id: 'overview', label: 'Econ Data', code: 'ECST' },
-  { id: 'markets', label: 'World Mkts', code: 'WMKT' },
-  { id: 'wei', label: 'Global Equities', code: 'WEI' },
-  { id: 'weif', label: 'Index Futures', code: 'WEIF' },
-  { id: 'wpe', label: 'P/E & Valuation', code: 'WPE' },
-  { id: 'yields', label: 'Yield Curve', code: 'YCRV' },
-  { id: 'fx', label: 'FX', code: 'FXCR' },
-  { id: 'commodities', label: 'Commod.', code: 'CMDM' },
-  { id: 'crypto', label: 'Crypto', code: 'CRYP' },
-  { id: 'central', label: 'Central Banks', code: 'CBRT' },
-  { id: 'fedwatch', label: 'Rate Watch', code: 'WIRP' },
-  { id: 'calendar', label: 'Econ Cal', code: 'ECO' },
-  { id: 'sectors', label: 'Sectors', code: 'SECT' },
-  { id: 'volatility', label: 'Volatility', code: 'VOLM' },
-  { id: 'credit', label: 'Credit', code: 'CRDM' },
-  { id: 'pmi', label: 'Global PMI', code: 'GPMI' },
-  { id: 'labor', label: 'Labor', code: 'LABR' },
-  { id: 'housing', label: 'Housing', code: 'HOUS' },
-  { id: 'money', label: 'Money Mkts', code: 'MMKT' },
-  { id: 'gdp', label: 'Global GDP', code: 'WGDP' },
-  { id: 'inflation', label: 'Inflation', code: 'INFL' },
-  { id: 'tradeflow', label: 'Trade Flow', code: 'TRFL' },
-  { id: 'sovereign', label: 'Sov Risk', code: 'SOVR' },
-  { id: 'globalrates', label: 'Global Rates', code: 'RATD' },
-  { id: 'supplychain', label: 'Supply Chain', code: 'SPLC' },
-  { id: 'sentiment', label: 'Sentiment', code: 'SENT' },
-  { id: 'fiscal', label: 'Fiscal', code: 'FISC' },
-  { id: 'debt', label: 'Debt/Issuance', code: 'DDIS' },
-  { id: 'realrates', label: 'Real Rates', code: 'REAL' },
-  { id: 'bop', label: 'Balance of Pay', code: 'BOP' },
-  { id: 'energy', label: 'Energy Bal', code: 'NRGY' },
-  { id: 'mfg', label: 'Mfg & Orders', code: 'MFG' },
-  { id: 'consumer', label: 'Consumer', code: 'CONS' },
-  { id: 'fci', label: 'Fin Conditions', code: 'FCI' },
-];
+export type { MacroTab };
 
 interface Props {
   activeView: ViewType;
@@ -248,12 +200,13 @@ export default function TopNav({ activeView, onViewChange, activeMacroTab, onMac
 
   return (
     <nav className="bg-background border-b border-border px-2 flex gap-3 overflow-x-auto items-center h-6 flex-shrink-0">
-      {tradingNavItems.map((item) => {
-        const isActive = activeView === item.view;
+      {tradingViews.map((view) => {
+        const item = viewById[view];
+        const isActive = activeView === view;
         return (
           <button
-            key={item.view}
-            onClick={() => onViewChange(item.view)}
+            key={view}
+            onClick={() => onViewChange(view)}
             title={item.label}
             className={`text-[10px] font-mono uppercase tracking-wider whitespace-nowrap py-1 border-b-2 transition-colors flex-shrink-0
               ${isActive

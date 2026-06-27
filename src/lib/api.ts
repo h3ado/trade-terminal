@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
+const BASE = import.meta.env.VITE_API_URL ?? '';
 
 function token(): string | null {
   return localStorage.getItem('tt_jwt');
@@ -14,33 +14,34 @@ function authHeaders(extra?: HeadersInit): HeadersInit {
   return { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}), ...extra };
 }
 
-export async function apiGet<T = unknown>(path: string, params?: Record<string, string>): Promise<T> {
-  const url = new URL(`${BASE}${path}`);
+async function request<T = unknown>(path: string, init: RequestInit = {}, params?: Record<string, string>): Promise<T> {
+  const url = new URL(`${BASE}${path}`, window.location.origin);
   if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const r = await fetch(url.toString(), { headers: authHeaders() });
-  if (!r.ok) { const e = await r.json().catch(() => ({ error: r.statusText })); throw new Error((e as any).error ?? r.statusText); }
+  const r = await fetch(url.toString(), { ...init, headers: authHeaders(init.headers) });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({ error: r.statusText }));
+    throw new Error((e as any).error ?? r.statusText);
+  }
+  if (r.status === 204) return undefined as T;
   return r.json() as Promise<T>;
+}
+
+export async function apiGet<T = unknown>(path: string, params?: Record<string, string>): Promise<T> {
+  return request<T>(path, {}, params);
 }
 
 export async function apiPost<T = unknown>(path: string, body?: unknown): Promise<T> {
-  const r = await fetch(`${BASE}${path}`, { method: 'POST', headers: authHeaders(), body: body !== undefined ? JSON.stringify(body) : undefined });
-  if (!r.ok) { const e = await r.json().catch(() => ({ error: r.statusText })); throw new Error((e as any).error ?? r.statusText); }
-  return r.json() as Promise<T>;
+  return request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined });
 }
 
 export async function apiPatch<T = unknown>(path: string, body?: unknown): Promise<T> {
-  const r = await fetch(`${BASE}${path}`, { method: 'PATCH', headers: authHeaders(), body: body !== undefined ? JSON.stringify(body) : undefined });
-  if (!r.ok) { const e = await r.json().catch(() => ({ error: r.statusText })); throw new Error((e as any).error ?? r.statusText); }
-  return r.json() as Promise<T>;
+  return request<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined });
 }
 
 export async function apiDelete(path: string): Promise<void> {
-  const r = await fetch(`${BASE}${path}`, { method: 'DELETE', headers: authHeaders() });
-  if (!r.ok) { const e = await r.json().catch(() => ({ error: r.statusText })); throw new Error((e as any).error ?? r.statusText); }
+  await request(path, { method: 'DELETE' });
 }
 
 export async function apiPut<T = unknown>(path: string, body?: unknown): Promise<T> {
-  const r = await fetch(`${BASE}${path}`, { method: 'PUT', headers: authHeaders(), body: body !== undefined ? JSON.stringify(body) : undefined });
-  if (!r.ok) { const e = await r.json().catch(() => ({ error: r.statusText })); throw new Error((e as any).error ?? r.statusText); }
-  return r.json() as Promise<T>;
+  return request<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined });
 }

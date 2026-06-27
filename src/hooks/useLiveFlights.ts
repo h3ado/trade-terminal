@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { apiGet } from '@/lib/api';
 
 export type LiveFlight = {
   id: string;
@@ -41,17 +42,25 @@ function snapBbox(b: Bbox): Bbox {
 }
 
 async function fetchFlights(bbox: Bbox, signal: AbortSignal): Promise<LiveFlight[]> {
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/opensky-flights?lamin=${bbox.lamin}&lamax=${bbox.lamax}&lomin=${bbox.lomin}&lomax=${bbox.lomax}`;
-  const r = await fetch(url, {
-    signal,
-    headers: {
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-    },
+  const data = await apiGet<{ flights?: LiveFlight[] }>('/api/market/events/opensky-flights', {
+    lamin: String(bbox.lamin),
+    lamax: String(bbox.lamax),
+    lomin: String(bbox.lomin),
+    lomax: String(bbox.lomax),
   });
-  const data = await r.json();
-  if (!r.ok) throw new Error(data?.error ?? `HTTP ${r.status}`);
-  return (data?.flights ?? []) as LiveFlight[];
+  signal.throwIfAborted();
+  return (data?.flights ?? []).map((f: any) => ({
+    id: f.id ?? f.icao24,
+    callsign: f.callsign ?? '',
+    country: f.country ?? '',
+    lat: f.lat,
+    lng: f.lng,
+    altFt: f.altFt ?? (f.altitude == null ? null : Math.round(Number(f.altitude) * 3.28084)),
+    speedKts: f.speedKts ?? (f.velocity == null ? null : Math.round(Number(f.velocity) * 1.94384)),
+    trackDeg: f.trackDeg ?? f.heading ?? 0,
+    vertRateFpm: f.vertRateFpm ?? 0,
+    onGround: !!f.onGround,
+  })) as LiveFlight[];
 }
 
 /**

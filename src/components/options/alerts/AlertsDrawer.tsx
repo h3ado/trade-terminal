@@ -1,7 +1,7 @@
 // Alert Engine — drawer with rule list, add/remove, mock evaluator triggers toasts.
 import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 import { Trash2, Plus } from "lucide-react";
 
@@ -43,7 +43,7 @@ export default function AlertsDrawer({ open, onClose }: Props) {
         const r = active[Math.floor(Math.random() * active.length)];
         const msg = `${r.ticker ?? "ANY"} · ${r.name}`;
         setEvents(prev => [{ ts: Date.now(), msg }, ...prev].slice(0, 30));
-        toast({ title: "ALRT triggered", description: msg });
+        toast("ALRT triggered", { description: msg });
       }
     }, 12000);
     return () => clearInterval(id);
@@ -58,7 +58,7 @@ export default function AlertsDrawer({ open, onClose }: Props) {
       });
       setRules(p => [data, ...p]);
       setDraft({ name: "", ticker: "", rule_type: "gex_flip", threshold: "" });
-    } catch (e: any) { toast({ title: "Add failed", description: e.message }); }
+    } catch (e: any) { toast.error("Add failed", { description: e.message }); }
   };
 
   const removeRule = async (id: string) => {

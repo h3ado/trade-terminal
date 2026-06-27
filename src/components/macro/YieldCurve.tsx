@@ -12,6 +12,7 @@ import {
 import { useMacroCountry } from '@/contexts/MacroCountryContext';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { ExpandableResponsiveContainer } from '@/components/shared/ExpandChart';
+import { apiGet } from '@/lib/api';
 
 interface YieldPoint {
   maturity: string;
@@ -119,8 +120,7 @@ export default function YieldCurve() {
   const [liveInverted, setLiveInverted] = useState<boolean | null>(null);
 
   useEffect(() => {
-    fetch('/api/market/macro/yield-curve')
-      .then(r => r.ok ? r.json() : null)
+    apiGet<{ tenors?: any[]; inverted?: boolean }>('/api/market/macro/yield-curve')
       .then(d => {
         if (!d?.tenors?.length) return;
         const mapped: YieldPoint[] = (d.tenors as any[]).map((t: any) => ({

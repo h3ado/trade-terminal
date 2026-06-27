@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ViewType } from '@/types/trade';
-import type { MacroTab } from '@/components/TopNav';
-import type { FxTab } from '@/components/ForexNav';
+import type { MacroTab } from '@/config/views';
+import type { FxTab } from '@/config/fx';
 
 export interface NavEntry {
   view: ViewType;
