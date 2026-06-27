@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { apiGet } from '@/lib/api';
+import { usePolledApi } from './usePolledApi';
 
 export type LiveFire = {
   id: string;
@@ -15,31 +14,16 @@ export type LiveFire = {
 };
 
 const REFRESH_MS = 15 * 60_000; // 15 minutes
+const EMPTY_FIRES: LiveFire[] = [];
+const selectFires = (data: { fires?: LiveFire[] }) => data.fires ?? EMPTY_FIRES;
 
 export function useLiveFires() {
-  const [fires, setFires] = useState<LiveFire[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const data = await apiGet<{ fires?: LiveFire[] }>('/api/market/events/nasa-fires');
-        if (cancelled) return;
-        setFires((data?.fires ?? []) as LiveFire[]);
-        setError(null);
-      } catch (e: any) {
-        if (!cancelled) setError(String(e?.message ?? e));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    const id = window.setInterval(load, REFRESH_MS);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
+  const { value: fires, loading, error } = usePolledApi({
+    path: '/api/market/events/nasa-fires',
+    intervalMs: REFRESH_MS,
+    initial: EMPTY_FIRES,
+    trackLoading: true,
+    select: selectFires,
+  });
   return { fires, loading, error };
 }

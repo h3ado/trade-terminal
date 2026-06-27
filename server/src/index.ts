@@ -13,6 +13,7 @@ import optionAlertsRouter from './routes/option-alerts';
 import quizAttemptsRouter from './routes/quiz-attempts';
 import marketRouter from './routes/market';
 import { startMarketSync } from './lib/marketSync';
+import { jsonError } from './lib/http';
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
@@ -48,6 +49,7 @@ app.use('/api/quiz-attempts', quizAttemptsRouter);
 app.use('/api/market', marketRouter);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.use(jsonError);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
