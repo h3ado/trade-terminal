@@ -280,7 +280,7 @@ router.get('/commodities', async (_req, res) => {
     const tdItems = Array.isArray(tdResults) ? fulfilled(tdResults) : (tdResults as any)?.value ? fulfilled((tdResults as any).value) : [];
     const fhItems = Array.isArray(fhResults) ? fulfilled(fhResults) : (fhResults as any)?.value ? fulfilled((fhResults as any).value) : [];
 
-    const commodities = [...tdItems, ...fhItems].filter(c => c.last != null);
+    const commodities = [...tdItems, ...fhItems].filter((c: any) => c.last != null);
     const data = { commodities, fetchedAt: Date.now() };
     commCache = { ts: Date.now(), data };
     res.json(data);

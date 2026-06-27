@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import CommandLine from '@/components/CommandLine';
 import AccountMenu from '@/components/AccountMenu';
-import { MacroTab } from '@/components/TopNav';
-import { FxTab } from '@/components/ForexNav';
+import type { MacroTab } from '@/config/views';
+import type { FxTab } from '@/config/fx';
 import { ViewType } from '@/types/trade';
 import { usePrivacy } from '@/contexts/PrivacyContext';
 

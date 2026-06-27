@@ -1,73 +1,90 @@
-# Welcome to your Lovable project
+# Trade Terminal
 
-## Project info
+Freestanding trading workstation built with Vite, React, Express, and Prisma/Postgres.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
 
-## How can I edit this code?
+- Frontend: React, Vite, Tailwind, TanStack Query
+- Backend: Express API in `server/`
+- Database: Postgres via Prisma migrations
+- Package manager: npm
 
-There are several ways of editing your application.
+## Architecture
 
-**Use Lovable**
+Trade Terminal is a freestanding app. The browser talks to the Express API through `src/lib/api.ts`; in local development Vite proxies `/api` to `http://localhost:3001`. Prisma migrations in `server/prisma/migrations/` are the database source of truth.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+The main terminal views are registered in `src/config/views.tsx`. FX tabs live in `src/config/fx.ts`; options modules and aliases live in `src/config/options.ts`. Navigation state is URL-backed, so deep links such as `/?view=options&tab=gex&ticker=SPY&sub=profile` hydrate the terminal directly.
 
-Changes made via Lovable will be committed automatically to this repo.
+Launchpad workspaces are stored in localStorage under `trade-terminal:launchpad:v2`. Older `lovable:launchpad:*` layouts are read once and migrated automatically.
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Setup
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
+npm install --prefix server
+cp .env.example .env
+cp server/.env.example server/.env
+npm run db:start
+npm run db:migrate --prefix server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Frontend runs on `http://localhost:8080`. Vite proxies `/api` to `http://localhost:3001`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Environment
 
-**Use GitHub Codespaces**
+Root `.env`:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `VITE_API_URL`: optional. Leave blank for same-origin `/api`; set for separate deployments.
 
-## What technologies are used for this project?
+Server `server/.env`:
 
-This project is built with:
+- `DATABASE_URL`: required.
+- `JWT_SECRET`: required outside throwaway local dev.
+- `FRONTEND_URL`: required in production CORS config.
+- Provider keys are optional; routes return empty fallback payloads or 5xx provider errors when a required provider is missing.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Common optional provider keys are documented in `server/.env.example`. Missing market-data keys do not require Supabase or edge functions; the Express routes either use deterministic fallbacks, return empty arrays, or report a provider error from the API layer.
 
-## How can I deploy this project?
+## Scripts
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+```sh
+npm run dev              # frontend + Express
+npm run dev:frontend     # Vite only
+npm run dev:server       # Express only
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+npm run server:build
+npm run test:e2e
+```
 
-## Can I connect a custom domain to my Lovable project?
+Database:
 
-Yes, you can!
+```sh
+npm run db:start
+npm run db:stop
+npm run db:reset
+npm run db:migrate --prefix server
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Workflows
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- Start at `/auth`, create or log into a local account, then use the terminal shell.
+- Use `view`, `macro`, `fx`, `tab`, `ticker`, and `sub` query params for reproducible terminal states.
+- Use Launchpad (`LAUN` or `LP`) for multi-panel workspaces. Workspaces can be duplicated, renamed, reset, resized, and persisted locally.
+- Use provider-backed routes through `/api/market/*`. Frontend code should import from `src/lib/api.ts` instead of calling `fetch('/api/...')` directly.
+
+## Deployment
+
+1. Install root and server dependencies with `npm ci`.
+2. Set `DATABASE_URL`, `JWT_SECRET`, and `FRONTEND_URL`.
+3. Run `npm run db:migrate --prefix server`.
+4. Build server with `npm run server:build`.
+5. Build frontend with `npm run build`.
+6. Serve `dist/` and `server/dist/index.js` behind the same origin, or set `VITE_API_URL`.
+
+## Notes
+
+Supabase and Lovable runtime paths are not part of the 1.0 app. Prisma migrations are the database source of truth.

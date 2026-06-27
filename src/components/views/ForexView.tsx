@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { FxTab, fxTabs } from '@/components/ForexNav';
+import { fxTabs, type FxTab } from '@/config/fx';
 import { BridgeProvider } from '@/contexts/BridgeContext';
 import { useFxBase, FX_BASES, FxBase } from '@/contexts/FxBaseContext';
 import CmdHeaderStrip from '@/components/shared/CmdHeaderStrip';
@@ -113,4 +113,3 @@ export default function ForexView({ activeTab, onTabChange }: Props) {
     </BridgeProvider>
   );
 }
-

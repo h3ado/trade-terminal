@@ -1,6 +1,7 @@
 // Top horizontal module nav — single Bloomberg breadcrumb row.
 // CODE · LABEL pattern, orange underline on active, no chip backgrounds.
 import { OptionsTab } from "@/types/trade";
+import { optionsModules } from "@/config/options";
 
 export interface ModuleDef {
   id: OptionsTab;
@@ -9,24 +10,7 @@ export interface ModuleDef {
   group?: string;
 }
 
-export const OPTIONS_MODULES: ModuleDef[] = [
-  { id: "dash",  code: "DASH",  label: "Dashboard",      group: "OVERVIEW" },
-  { id: "omon",  code: "OMON",  label: "Options Matrix", group: "CHAIN" },
-  { id: "gamma", code: "GAMMA", label: "Gamma Levels",   group: "POSITIONING" },
-  { id: "gex",   code: "GEX",   label: "GEX Profile",    group: "POSITIONING" },
-  { id: "dpi",   code: "DPI",   label: "Dealer Intel",   group: "POSITIONING" },
-  { id: "ovme",  code: "OVME",  label: "Vol Surface",    group: "VOLATILITY" },
-  { id: "maxp",  code: "MAXP",  label: "Max Pain",       group: "POSITIONING" },
-  { id: "pay",   code: "PAY",   label: "Payoff Lab",     group: "STRATEGY" },
-  { id: "flow",  code: "FLOW",  label: "Dealer Flow",    group: "FLOW" },
-  { id: "sent",  code: "SENT",  label: "Sentiment",      group: "FLOW" },
-  { id: "grk",   code: "GRK",   label: "Greeks Book",    group: "STRATEGY" },
-  { id: "qscr",  code: "QSCR",  label: "Q-Scores",       group: "SCAN" },
-  { id: "scan",  code: "SCAN",  label: "Screener",       group: "SCAN" },
-  { id: "uoa",   code: "UOA",   label: "Unusual Flow",   group: "FLOW" },
-  { id: "earn",  code: "EARN",  label: "Earnings Play",  group: "STRATEGY" },
-  { id: "varb",  code: "VARB",  label: "Vol Arb Lab",    group: "VOLATILITY" },
-];
+export const OPTIONS_MODULES: ModuleDef[] = optionsModules;
 
 interface Props {
   active: OptionsTab;

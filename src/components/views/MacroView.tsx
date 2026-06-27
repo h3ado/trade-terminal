@@ -32,7 +32,7 @@ import FinancialConditions from '@/components/macro/FinancialConditions';
 import WorldEquityIndices from '@/components/macro/WorldEquityIndices';
 import WorldEquityFutures from '@/components/macro/WorldEquityFutures';
 import WorldEquityValuations from '@/components/macro/WorldEquityValuations';
-import { MacroTab } from '@/components/TopNav';
+import type { MacroTab } from '@/config/views';
 
 interface Props {
   activeTab: MacroTab;

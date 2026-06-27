@@ -30,6 +30,7 @@ import { Map2D } from './map2d/Map2D';
 export const SAVE_VIEW_EVENT = 'lovable:globe-save-view';
 export const LOAD_VIEW_EVENT = 'lovable:globe-load-view';
 export const LIST_VIEWS_EVENT = 'lovable:globe-list-views';
+const DEV_DEMO_STORM = import.meta.env.DEV;
 /** CLI helpers: dispatch a SAVE/LOAD/VIEWS request that AdvancedGlobe handles. */
 export function saveGlobeView(key: string) {
   window.dispatchEvent(new CustomEvent(SAVE_VIEW_EVENT, { detail: { key } }));
@@ -836,10 +837,10 @@ export default function AdvancedGlobe({
   const indices = useIndices();
   const ais = useAISVessels(layers.tankers.on);
   const stormsState = useStorms(layers.storms.on);
-  // Demo storm injection (off-season visual QA). Toggled by CLI: STMDEMO.
+  // Dev-only storm injection for off-season visual QA.
   const [demoStormOn, setDemoStormOn] = useState(false);
   const stormsList = useMemo(
-    () => demoStormOn ? [DEMO_STORM, ...stormsState.storms] : stormsState.storms,
+    () => DEV_DEMO_STORM && demoStormOn ? [DEMO_STORM, ...stormsState.storms] : stormsState.storms,
     [demoStormOn, stormsState.storms],
   );
   // Virtual "now" used by the terminator and econ-pin recency. When the
@@ -972,9 +973,10 @@ export default function AdvancedGlobe({
   }, [savedViews.views, layers, theme, macroMetric, econHighOnly, econCBOnly, scrubOffsetMin]);
 
 
-  // Listen for STMDEMO toggle: inject synthetic Atlantic hurricane and force
-  // the storms layer + scrubber on so the user can immediately verify.
+  // Listen for dev-only synthetic hurricane toggles and force the storms
+  // layer + scrubber on so visual QA can verify the path immediately.
   useEffect(() => {
+    if (!DEV_DEMO_STORM) return;
     const handler = () => {
       setDemoStormOn(prev => {
         const next = !prev;
@@ -987,7 +989,7 @@ export default function AdvancedGlobe({
     };
     window.addEventListener(DEMO_STORM_EVENT, handler);
     return () => window.removeEventListener(DEMO_STORM_EVENT, handler);
-  }, []);
+  }, [setLayers]);
   useEffect(() => {
     let cancelled = false;
     fetch(COUNTRIES_URL)

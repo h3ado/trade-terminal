@@ -14,6 +14,7 @@ import { useMacroCountry } from '@/contexts/MacroCountryContext';
 import { useExpandableRows, ExpandableRow, ExpandIcon, DetailMiniChart, DetailKV } from './MacroExpandable';
 import EIALiveStrip from './EIALiveStrip';
 import { ExpandableResponsiveContainer } from '@/components/shared/ExpandChart';
+import { apiGet } from '@/lib/api';
 
 interface Commodity {
   category: string;
@@ -73,8 +74,7 @@ export default function Commodities() {
   const [livePrices, setLivePrices] = useState<Record<string, { last: number; change: number; changePct: number }>>({});
 
   useEffect(() => {
-    fetch('/api/market/macro/commodities')
-      .then(r => r.ok ? r.json() : null)
+    apiGet<{ commodities?: any[] }>('/api/market/macro/commodities')
       .then(d => {
         if (!d?.commodities?.length) return;
         const map: Record<string, { last: number; change: number; changePct: number }> = {};

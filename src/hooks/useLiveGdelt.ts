@@ -23,7 +23,7 @@ export function useLiveGdelt() {
     let cancelled = false;
     const load = async () => {
       try {
-        const data = await apiGet<{ cells?: GdeltCell[]; fallback?: boolean; error?: string }>('/api/market/events/acled-events');
+        const data = await apiGet<{ cells?: GdeltCell[]; fallback?: boolean; error?: string }>('/api/market/events/gdelt-events');
         if (cancelled) return;
         // GDELT rate-limits aggressively; treat any error or empty payload as
         // a soft "no data right now" instead of bubbling up — situation feed
