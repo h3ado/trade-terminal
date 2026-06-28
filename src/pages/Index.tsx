@@ -49,6 +49,7 @@ import SqueezeScanner from '@/components/macro/SqueezeScanner';
 import SectorRotation from '@/components/macro/SectorRotation';
 import AttributionView from '@/components/views/AttributionView';
 import PositionSizerView from '@/components/views/PositionSizerView';
+import OverviewView from '@/components/views/OverviewView';
 import { useNavHistory } from '@/hooks/useNavHistory';
 import type { NewsScope } from '@/hooks/useGdeltNews';
 
@@ -90,6 +91,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   msrsk: 'SRSK · Sovereign Risk',
   mwlst: 'Market Watchlist',
   security: 'Security',
+  over: 'OVER · Market Overview',
   crypto: 'Crypto Terminal',
   mint: 'MINT · Market Internals',
   mnetliq: 'NETLIQ · Net Liquidity Model',
@@ -297,6 +299,7 @@ function IndexInner() {
       case 'msrsk': return <SRSK />;
       case 'mwlst': return <WLST />;
       case 'security': return <SecurityView ticker={securityTicker} />;
+      case 'over':     return <OverviewView />;
       case 'mint':    return <MarketInternals />;
       case 'mnetliq': return <NetLiquidity />;
       case 'msqzz':   return <SqueezeScanner />;
@@ -354,7 +357,7 @@ function IndexInner() {
         )}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {(() => {
-            const fullBleed = ['globe','cot','news','forex','crypto','journal','quiz','launchpad','options','security','mwei','mwb','mglco','mtop','meco','mecst','mecfc','mecwb','mstat','mectr','mcoun','moecd','meiu','mfed','mfomc','mffip','mcenb','msrsk','mwlst','mint','mnetliq','msqzz','mrotn','attr','posiz','mcpi','mppi','munemp','mnfp','mgdp','mpce','mjolts','mism'];
+            const fullBleed = ['globe','cot','news','forex','crypto','journal','quiz','launchpad','options','security','over','mwei','mwb','mglco','mtop','meco','mecst','mecfc','mecwb','mstat','mectr','mcoun','moecd','meiu','mfed','mfomc','mffip','mcenb','msrsk','mwlst','mint','mnetliq','msqzz','mrotn','attr','posiz','mcpi','mppi','munemp','mnfp','mgdp','mpce','mjolts','mism'];
             const isFullBleed = fullBleed.includes(activeView);
             const mainPad = ['news','options'].includes(activeView) || isFullBleed ? 'p-0' : 'p-4';
             return (

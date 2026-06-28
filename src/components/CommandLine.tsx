@@ -74,6 +74,7 @@ export const COMMANDS: CommandDef[] = [
   { code: 'ROTN',  label: 'Sector Rotation (RRG)',          action: 'navigate', view: 'mrotn',  skipCountry: true },
   { code: 'ATTR',  label: 'P&L Attribution (Clock/Grade/Hold/Sector)', action: 'navigate', view: 'attr',  skipCountry: true },
   { code: 'POSIZ', label: 'Position Sizer (Kelly/Fixed/% Risk)',        action: 'navigate', view: 'posiz', skipCountry: true },
+  { code: 'OVER',  label: 'Market Overview (Cross-Asset)',   action: 'navigate', view: 'over',      skipCountry: true },
   { code: 'LAUN',  label: 'Launchpad (Multi-Panel)',        action: 'navigate', view: 'launchpad', skipCountry: true },
   { code: 'LP',   label: 'Launchpad (alias)',              action: 'navigate', view: 'launchpad', skipCountry: true },
   { code: 'FX',    label: 'Forex Terminal',             action: 'navigate', view: 'forex', fxTab: 'home' },
