@@ -30,20 +30,20 @@ function iv(K: number, spot: number, days: number, baseVol: number) {
   return Math.max(5, baseVol + termAdj + smile + putSkew);
 }
 
-interface Props { deal: OvmeDeal; redact?: boolean }
+interface Props { deal: OvmeDeal; redact?: boolean; liveIvAt?: (strike: number, dte: number) => number | null }
 
-export default function OvmeSkew({ deal, redact = false }: Props) {
+export default function OvmeSkew({ deal, redact = false, liveIvAt }: Props) {
   const ks = strikes(deal.strike);
   const data = ks.map((K) => {
     const row: Record<string, number> = { K };
-    for (const t of TENORS) row[t.key] = Math.round(iv(K, deal.spot, t.days, deal.vol + 8) * 10) / 10;
+    for (const t of TENORS) row[t.key] = Math.round((liveIvAt?.(K, t.days) ?? iv(K, deal.spot, t.days, deal.vol + 8)) * 10) / 10;
     return row;
   });
 
   // Skew metrics on the 1M tenor (proxy for 25Δ ≈ ±5% strike offset)
-  const atm = iv(deal.spot, deal.spot, 30, deal.vol + 8);
-  const put25 = iv(deal.spot * 0.95, deal.spot, 30, deal.vol + 8);
-  const call25 = iv(deal.spot * 1.05, deal.spot, 30, deal.vol + 8);
+  const atm = liveIvAt?.(deal.spot, 30) ?? iv(deal.spot, deal.spot, 30, deal.vol + 8);
+  const put25 = liveIvAt?.(deal.spot * 0.95, 30) ?? iv(deal.spot * 0.95, deal.spot, 30, deal.vol + 8);
+  const call25 = liveIvAt?.(deal.spot * 1.05, 30) ?? iv(deal.spot * 1.05, deal.spot, 30, deal.vol + 8);
   const rr25 = call25 - put25;
   const bf25 = (put25 + call25) / 2 - atm;
   const slope = (put25 - call25) / 10; // per %

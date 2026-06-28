@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { MacroTab, macroTabs } from '@/components/TopNav';
 import { FxTab, fxTabs } from '@/components/ForexNav';
+import { CryptoTab, cryptoTabs } from '@/components/CryptoNav';
 import { PrivacyProvider, usePrivacy } from '@/contexts/PrivacyContext';
 import { MacroCountryProvider } from '@/contexts/MacroCountryContext';
 import { FxBaseProvider } from '@/contexts/FxBaseContext';
@@ -11,6 +12,7 @@ import AddTradeModal from '@/components/AddTradeModal';
 import TerminalHeader from '@/components/TerminalHeader';
 import TopNav from '@/components/TopNav';
 import ForexNav from '@/components/ForexNav';
+import CryptoNav from '@/components/CryptoNav';
 import ToolsPanel from '@/components/ToolsPanel';
 import NavBreadcrumb from '@/components/NavBreadcrumb';
 import TradingCmdBar from '@/components/TradingCmdBar';
@@ -25,6 +27,7 @@ import MistakesView from '@/components/views/MistakesView';
 import GoalsView from '@/components/views/GoalsView';
 import MacroView from '@/components/views/MacroView';
 import ForexView from '@/components/views/ForexView';
+import CryptoView from '@/components/views/CryptoView';
 import GlobeView from '@/components/views/GlobeView';
 import COTData from '@/components/macro/COTData';
 import NewsView from '@/components/views/NewsView';
@@ -39,7 +42,13 @@ import WEIMonitor from '@/components/monitors/WEIMonitor';
 import WBMonitor from '@/components/monitors/WBMonitor';
 import GLCOMonitor from '@/components/monitors/GLCOMonitor';
 import TOPMonitor from '@/components/monitors/TOPMonitor';
-import { ECO, ECST, ECFC, ECWB, STAT, ECTR, COUN, OECD, EIU, FED, FOMC, FFIP, CENB, SRSK, WLST } from '@/components/macro/cmd';
+import { ECO, ECST, ECFC, ECWB, STAT, ECTR, COUN, OECD, EIU, FED, FOMC, FFIP, CENB, SRSK, WLST, CPI, PPI, UNEMP, NFP, GDP, PCE, JOLTS, ISM } from '@/components/macro/cmd';
+import MarketInternals from '@/components/macro/MarketInternals';
+import NetLiquidity from '@/components/macro/NetLiquidity';
+import SqueezeScanner from '@/components/macro/SqueezeScanner';
+import SectorRotation from '@/components/macro/SectorRotation';
+import AttributionView from '@/components/views/AttributionView';
+import PositionSizerView from '@/components/views/PositionSizerView';
 import { useNavHistory } from '@/hooks/useNavHistory';
 import type { NewsScope } from '@/hooks/useGdeltNews';
 
@@ -79,12 +88,28 @@ const VIEW_LABELS: Record<ViewType, string> = {
   mffip: 'FFIP · Implied Probs',
   mcenb: 'CENB · Central Banks',
   msrsk: 'SRSK · Sovereign Risk',
+  mwlst: 'Market Watchlist',
   security: 'Security',
+  crypto: 'Crypto Terminal',
+  mint: 'MINT · Market Internals',
+  mnetliq: 'NETLIQ · Net Liquidity Model',
+  msqzz: 'SQZZ · Squeeze Scanner',
+  mrotn: 'ROTN · Sector Rotation',
+  attr: 'ATTR · P&L Attribution',
+  posiz: 'POSIZ · Position Sizer',
+  mcpi:   'CPI · Consumer Prices',
+  mppi:   'PPI · Producer Prices',
+  munemp: 'UNEMP · Labor Market',
+  mnfp:   'NFP · Payrolls',
+  mgdp:   'GDP · Growth',
+  mpce:   'PCE · Fed Inflation',
+  mjolts: 'JOLTS · Job Openings',
+  mism:   'ISM · Manufacturing PMI',
 };
 
 const TRADING_VIEWS: ViewType[] = ['dashboard', 'trades', 'analytics', 'calendar', 'performance', 'journal', 'playbooks', 'mistakes', 'goals'];
 
-function buildTrail(view: ViewType, macroTab: MacroTab, fxTab: FxTab): { trail: string[]; label: string } {
+function buildTrail(view: ViewType, macroTab: MacroTab, fxTab: FxTab, cryptoTab: CryptoTab = 'home'): { trail: string[]; label: string } {
   if (view === 'macro') {
     const t = macroTabs.find(m => m.id === macroTab);
     const seg = t ? `${t.label} (${t.code})` : 'Overview';
@@ -94,6 +119,11 @@ function buildTrail(view: ViewType, macroTab: MacroTab, fxTab: FxTab): { trail: 
     const t = fxTabs.find(f => f.id === fxTab);
     const seg = t ? `${t.label} (${t.code})` : 'Overview';
     return { trail: ['FOREX', seg], label: `FOREX › ${seg}` };
+  }
+  if (view === 'crypto') {
+    const t = cryptoTabs.find(c => c.id === cryptoTab);
+    const seg = t ? `${t.label} (${t.code})` : 'Overview';
+    return { trail: ['CRYPTO', seg], label: `CRYPTO › ${seg}` };
   }
   if (TRADING_VIEWS.includes(view)) {
     return { trail: ['TRADING', VIEW_LABELS[view]], label: `TRADING › ${VIEW_LABELS[view]}` };
@@ -108,6 +138,7 @@ function IndexInner() {
   const [toolsWidth, setToolsWidth] = useState(320);
   const [macroTab, setMacroTab] = useState<MacroTab>('overview');
   const [fxTab, setFxTab] = useState<FxTab>('home');
+  const [cryptoTab, setCryptoTab] = useState<CryptoTab>('home');
   const [securityTicker, setSecurityTicker] = useState<string>('AAPL');
   const [newsArgs, setNewsArgs] = useState<{ scope: NewsScope; value: string; ai: boolean; topic?: string; pinOnly?: boolean; sort?: 'recent' | 'velocity'; source?: 'all' | 'x' | 'potus' | 'fed'; rightPane?: 'detail' | 'map' | 'heat' }>({ scope: 'global', value: '', ai: false });
   const [optionsArgs, setOptionsArgs] = useState<{ tab: OptionsTab; ticker: string; sub?: string; earnFilter?: import('@/hooks/useEarningsCalendar').EarnFilter }>({ tab: 'dash', ticker: 'SPY' });
@@ -117,18 +148,18 @@ function IndexInner() {
   const startWidthRef = useRef(0);
 
   const initial = useMemo(() => {
-    const { trail, label } = buildTrail('launchpad', 'overview', 'home');
-    return { view: 'launchpad' as ViewType, macroTab: 'overview' as MacroTab, fxTab: 'home' as FxTab, label, trail };
+    const { trail, label } = buildTrail('launchpad', 'overview', 'home', 'home');
+    return { view: 'launchpad' as ViewType, macroTab: 'overview' as MacroTab, fxTab: 'home' as FxTab, cryptoTab: 'home' as CryptoTab, label, trail };
   }, []);
   const nav = useNavHistory(initial);
 
   // Push every nav change into history + trigger progress bar.
   useEffect(() => {
-    const { trail, label } = buildTrail(activeView, macroTab, fxTab);
-    nav.push({ view: activeView, macroTab, fxTab, label, trail });
+    const { trail, label } = buildTrail(activeView, macroTab, fxTab, cryptoTab);
+    nav.push({ view: activeView, macroTab, fxTab, cryptoTab, label, trail });
     setProgressKey(k => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeView, macroTab, fxTab]);
+  }, [activeView, macroTab, fxTab, cryptoTab]);
 
   // Sync back/forward changes from history -> local state.
   useEffect(() => {
@@ -137,6 +168,7 @@ function IndexInner() {
     if (cur.view !== activeView) setActiveView(cur.view);
     if (cur.macroTab && cur.macroTab !== macroTab) setMacroTab(cur.macroTab);
     if (cur.fxTab && cur.fxTab !== fxTab) setFxTab(cur.fxTab);
+    if (cur.cryptoTab && cur.cryptoTab !== cryptoTab) setCryptoTab(cur.cryptoTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.current]);
 
@@ -238,6 +270,7 @@ function IndexInner() {
       case 'goals': return <GoalsView />;
       case 'macro': return <MacroView activeTab={macroTab} />;
       case 'forex': return <ForexView activeTab={fxTab} onTabChange={setFxTab} />;
+      case 'crypto': return <CryptoView activeTab={cryptoTab} onTabChange={setCryptoTab} />;
       case 'cot': return <COTData />;
       case 'globe': return <GlobeView />;
       case 'news': return <NewsView initialScope={newsArgs.scope} initialValue={newsArgs.value} initialAiBrief={newsArgs.ai} initialTopic={newsArgs.topic} initialPinOnly={newsArgs.pinOnly} initialSort={newsArgs.sort} initialSource={newsArgs.source} initialRightPane={newsArgs.rightPane} />;
@@ -264,16 +297,30 @@ function IndexInner() {
       case 'msrsk': return <SRSK />;
       case 'mwlst': return <WLST />;
       case 'security': return <SecurityView ticker={securityTicker} />;
+      case 'mint':    return <MarketInternals />;
+      case 'mnetliq': return <NetLiquidity />;
+      case 'msqzz':   return <SqueezeScanner />;
+      case 'mrotn':   return <SectorRotation />;
+      case 'attr':    return <AttributionView />;
+      case 'posiz':   return <PositionSizerView />;
+      case 'mcpi':    return <CPI />;
+      case 'mppi':    return <PPI />;
+      case 'munemp':  return <UNEMP />;
+      case 'mnfp':    return <NFP />;
+      case 'mgdp':    return <GDP />;
+      case 'mpce':    return <PCE />;
+      case 'mjolts':  return <JOLTS />;
+      case 'mism':    return <ISM />;
       default: return <Launchpad />;
     }
   };
 
   const isTradingView = TRADING_VIEWS.includes(activeView);
-  const viewKey = `${activeView}:${macroTab}:${fxTab}`;
+  const viewKey = `${activeView}:${macroTab}:${fxTab}:${cryptoTab}`;
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      <TerminalHeader onAddTrade={() => setShowAddModal(true)} onNavigate={setActiveView} onMacroTab={setMacroTab} onFxTab={(t) => { setFxTab(t); setActiveView('forex'); }} />
+      <TerminalHeader onAddTrade={() => setShowAddModal(true)} onNavigate={setActiveView} onMacroTab={setMacroTab} onFxTab={(t) => { setFxTab(t); setActiveView('forex'); }} onCryptoTab={(t) => { setCryptoTab(t); setActiveView('crypto'); }} />
       <NavBreadcrumb
         trail={nav.current?.trail ?? ['Dashboard']}
         canBack={nav.canBack}
@@ -307,7 +354,7 @@ function IndexInner() {
         )}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {(() => {
-            const fullBleed = ['globe','cot','news','forex','journal','quiz','launchpad','options','security','mwei','mwb','mglco','mtop','meco','mecst','mecfc','mecwb','mstat','mectr','mcoun','moecd','meiu','mfed','mfomc','mffip','mcenb','msrsk','mwlst'];
+            const fullBleed = ['globe','cot','news','forex','crypto','journal','quiz','launchpad','options','security','mwei','mwb','mglco','mtop','meco','mecst','mecfc','mecwb','mstat','mectr','mcoun','moecd','meiu','mfed','mfomc','mffip','mcenb','msrsk','mwlst','mint','mnetliq','msqzz','mrotn','attr','posiz','mcpi','mppi','munemp','mnfp','mgdp','mpce','mjolts','mism'];
             const isFullBleed = fullBleed.includes(activeView);
             const mainPad = ['news','options'].includes(activeView) || isFullBleed ? 'p-0' : 'p-4';
             return (
@@ -317,6 +364,9 @@ function IndexInner() {
                 )}
                 {activeView === 'forex' && (
                   <ForexNav activeTab={fxTab} onTabChange={setFxTab} />
+                )}
+                {activeView === 'crypto' && (
+                  <CryptoNav activeTab={cryptoTab} onTabChange={setCryptoTab} />
                 )}
                 <main className={`flex-1 min-h-0 relative ${mainPad} ${isFullBleed ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'}`}>
                   <div

@@ -22,12 +22,12 @@ const BUCKETS = [
   { label: "6M",   days: 180 },
 ];
 
-interface Props { deal: OvmeDeal; redact?: boolean }
+interface Props { deal: OvmeDeal; redact?: boolean; liveIvAt?: (strike: number, dte: number) => number | null }
 
-export default function OvmeTermStruct({ deal, redact = false }: Props) {
+export default function OvmeTermStruct({ deal, redact = false, liveIvAt }: Props) {
   const base = deal.vol;
   const data = BUCKETS.map((b) => {
-    const atm = Math.round((base + 3 + Math.log(b.days + 1) * 0.3) * 100) / 100;
+    const atm = Math.round((liveIvAt?.(deal.spot, b.days) ?? (base + 3 + Math.log(b.days + 1) * 0.3)) * 100) / 100;
     const putSkew = 2.5 + Math.log(b.days + 1) * 0.2;
     const callSkew = 1.5 + Math.log(b.days + 1) * 0.15;
     return {

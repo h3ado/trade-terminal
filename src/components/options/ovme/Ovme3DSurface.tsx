@@ -7,7 +7,7 @@ import { OrbitControls, Text, Line, Html } from "@react-three/drei";
 import { RotateCw, Crosshair } from "lucide-react";
 import * as THREE from "three";
 
-interface Props { ticker?: string; redact?: boolean }
+interface Props { ticker?: string; redact?: boolean; liveIvAt?: (strike: number, dte: number) => number | null }
 
 // Surface grid
 const STRIKE_COUNT = 16;
@@ -144,11 +144,13 @@ function Surface({
   intensity,
   hoverDetails,
   stops,
+  liveIvAt,
 }: {
   vibrance: number;
   intensity: number;
   hoverDetails: boolean;
   stops: Stop[];
+  liveIvAt?: (strike: number, dte: number) => number | null;
 }) {
   const [hover, setHover] = useState<
     | { point: THREE.Vector3; strike: number; term: string; iv: number }
@@ -167,7 +169,7 @@ function Surface({
     const iv: number[][] = [];
     for (let j = 0; j < TERM_COUNT; j++) {
       iv[j] = [];
-      for (let i = 0; i < STRIKE_COUNT; i++) iv[j][i] = ivAt(STRIKES[i], TERMS[j]);
+      for (let i = 0; i < STRIKE_COUNT; i++) iv[j][i] = liveIvAt?.(STRIKES[i], TERMS[j]) ?? ivAt(STRIKES[i], TERMS[j]);
     }
 
     // Displace vertices vertically + assign vertex colors.
@@ -208,7 +210,7 @@ function Surface({
     }
 
     return { geometry: geo, wireGeometry: wire, smileLines: smile, termLines: term, ivTable: iv };
-  }, [vibrance, intensity, stops]);
+  }, [vibrance, intensity, stops, liveIvAt]);
 
   const handleMove = (e: ThreeEvent<PointerEvent>) => {
     if (!hoverDetails) return;
@@ -646,7 +648,7 @@ function HelpText() {
   );
 }
 
-export default function Ovme3DSurface({ ticker = "SPY", redact = false }: Props) {
+export default function Ovme3DSurface({ ticker = "SPY", redact = false, liveIvAt }: Props) {
   const [vibrance, setVibrance] = useState(65);
   const [intensity, setIntensity] = useState(50);
   const [autoRotate, setAutoRotate] = useState(false);
@@ -732,7 +734,7 @@ export default function Ovme3DSurface({ ticker = "SPY", redact = false }: Props)
             >
               <color attach="background" args={["#0a0a0a"]} />
               <ambientLight intensity={1.0} />
-              <Surface vibrance={vibrance} intensity={intensity} hoverDetails={hoverDetails} stops={stops} />
+              <Surface vibrance={vibrance} intensity={intensity} hoverDetails={hoverDetails} stops={stops} liveIvAt={liveIvAt} />
 
               <OrbitControls
                 enablePan

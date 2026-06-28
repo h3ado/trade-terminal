@@ -21,6 +21,9 @@ import OwnTab from '@/components/security/OwnTab';
 import CompTab from '@/components/security/CompTab';
 import InsTab from '@/components/security/InsTab';
 import AiTab from '@/components/security/AiTab';
+import SecTab from '@/components/security/SecTab';
+import OptsTab from '@/components/security/OptsTab';
+import OvrTab from '@/components/security/OvrTab';
 
 // Terminal theme colors (matches CSS variables)
 const CHART_THEME = {
@@ -77,9 +80,10 @@ function fmtPct(n: number | null | undefined): string {
 }
 
 type BottomTab = 'news' | 'trades';
-type MainTab = 'gp' | 'des' | 'fa' | 'ee' | 'anr' | 'own' | 'comp' | 'ins' | 'ai';
+type MainTab = 'ovr' | 'gp' | 'des' | 'fa' | 'ee' | 'anr' | 'own' | 'comp' | 'opts' | 'ins' | 'sec' | 'ai';
 
 const MAIN_TABS: { id: MainTab; label: string; code: string }[] = [
+  { id: 'ovr',  label: 'Overview',    code: 'OVR'  },
   { id: 'gp',   label: 'Graph',       code: 'GP'   },
   { id: 'des',  label: 'Description', code: 'DES'  },
   { id: 'fa',   label: 'Financials',  code: 'FA'   },
@@ -87,7 +91,9 @@ const MAIN_TABS: { id: MainTab; label: string; code: string }[] = [
   { id: 'anr',  label: 'Analyst',     code: 'ANR'  },
   { id: 'own',  label: 'Ownership',   code: 'OWN'  },
   { id: 'comp', label: 'Peers',       code: 'COMP' },
+  { id: 'opts', label: 'Options',     code: 'OPT'  },
   { id: 'ins',  label: 'Insiders',    code: 'INS'  },
+  { id: 'sec',  label: 'SEC Filings', code: 'SEC'  },
   { id: 'ai',   label: 'AI Analyst',  code: 'AI'   },
 ];
 
@@ -99,7 +105,7 @@ export default function SecurityView({ ticker }: Props) {
   const [range, setRange] = useState<ChartRange>('3M');
   const [activeOverlays, setActiveOverlays] = useState<Set<OverlayKey>>(new Set(['sma20', 'sma50']));
   const [bottomTab, setBottomTab] = useState<BottomTab>('news');
-  const [mainTab, setMainTab] = useState<MainTab>('gp');
+  const [mainTab, setMainTab] = useState<MainTab>('ovr');
 
   const { overview, chart, indicators, fundamentals, peers, fundamentalsLoading, peersLoading, overviewLoading, chartLoading, error, refetchChart, refetchFundamentals } = useSecurityData(ticker, range);
   const { trades } = useTrades();
@@ -401,20 +407,24 @@ export default function SecurityView({ ticker }: Props) {
             <span>{tab.label}</span>
           </button>
         ))}
-        {((mainTab !== 'gp' && mainTab !== 'ai' && fundamentalsLoading) || (mainTab === 'comp' && peersLoading)) && (
+        {((mainTab !== 'gp' && mainTab !== 'ovr' && mainTab !== 'ai' && mainTab !== 'sec' && mainTab !== 'opts' && fundamentalsLoading) || (mainTab === 'comp' && peersLoading)) && (
           <span className="ml-auto pr-3 flex items-center text-[9px] text-muted-foreground animate-pulse">Loading...</span>
         )}
       </div>
 
-      {/* --Non-GP tabs (DES / FA / EE / ANR) -- */}
+      {/* --Non-GP tabs -- */}
       {mainTab !== 'gp' && (
         <div className="flex-1 min-h-0 overflow-hidden">
-          {!fundamentals && fundamentalsLoading && (
+          {mainTab === 'ovr' && (
+            <OvrTab ticker={ticker} overview={overview} fundamentals={fundamentals} chart={chart} />
+          )}
+          {/* Fundamentals loading/error — only show for tabs that need fundamentals */}
+          {mainTab !== 'ovr' && mainTab !== 'comp' && mainTab !== 'ai' && mainTab !== 'sec' && mainTab !== 'opts' && !fundamentals && fundamentalsLoading && (
             <div className="flex items-center justify-center h-full text-muted-foreground text-[10px] animate-pulse">
               Fetching fundamental data…
             </div>
           )}
-          {!fundamentals && !fundamentalsLoading && (
+          {mainTab !== 'ovr' && mainTab !== 'comp' && mainTab !== 'ai' && mainTab !== 'sec' && mainTab !== 'opts' && !fundamentals && !fundamentalsLoading && (
             <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground text-[10px]">
               <span>Fundamental data unavailable for {ticker}</span>
               <button onClick={refetchFundamentals} className="text-accent hover:underline">Retry</button>
@@ -436,10 +446,32 @@ export default function SecurityView({ ticker }: Props) {
             <OwnTab fundamentals={fundamentals} />
           )}
           {mainTab === 'comp' && (
-            <CompTab ticker={ticker} peers={peers} loading={peersLoading} />
+            <CompTab
+              ticker={ticker}
+              peers={peers}
+              loading={peersLoading}
+              currentData={overview && fundamentals ? {
+                name: overview.name,
+                marketCap: fundamentals.keyStats.marketCap,
+                price: overview.price,
+                changePct: overview.changePct,
+                trailingPE: fundamentals.keyStats.trailingPE,
+                forwardPE: fundamentals.keyStats.forwardPE,
+                pegRatio: fundamentals.keyStats.pegRatio,
+                revenueGrowth: fundamentals.financials.revenueGrowth,
+                profitMargins: fundamentals.financials.profitMargins,
+                returnOnEquity: fundamentals.financials.returnOnEquity,
+              } : null}
+            />
+          )}
+          {mainTab === 'opts' && (
+            <OptsTab ticker={ticker} />
           )}
           {fundamentals && mainTab === 'ins' && (
             <InsTab fundamentals={fundamentals} />
+          )}
+          {mainTab === 'sec' && (
+            <SecTab ticker={ticker} />
           )}
           {mainTab === 'ai' && (
             <AiTab ticker={ticker} fundamentals={fundamentals} overview={overview} />

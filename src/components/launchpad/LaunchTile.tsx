@@ -46,6 +46,12 @@ import FxBoardTile from './tiles/FxBoardTile';
 import EnergyTile from './tiles/EnergyTile';
 import YieldCurveTile from './tiles/YieldCurveTile';
 import MiniChartTile from './tiles/MiniChartTile';
+import MarketInternals from '@/components/macro/MarketInternals';
+import NetLiquidity from '@/components/macro/NetLiquidity';
+import SqueezeScanner from '@/components/macro/SqueezeScanner';
+import SectorRotation from '@/components/macro/SectorRotation';
+import AttributionView from '@/components/views/AttributionView';
+import PositionSizerView from '@/components/views/PositionSizerView';
 import ModulePicker, { MODULE_BY_CODE } from './ModulePicker';
 
 function renderByCode(code: string) {
@@ -94,10 +100,16 @@ function renderByCode(code: string) {
     case 'FXBD': return <FxBoardTile />;
     case 'ENRG': return <EnergyTile />;
     case 'YLDC': return <YieldCurveTile />;
-    case 'CBNK': return <NewsView initialScope="keyword" initialValue="central bank" />;
-    case 'GEO':  return <NewsView initialScope="keyword" initialValue="geopolitics" />;
-    case 'WIRE': return <NewsView initialScope="global" initialValue="" initialSource="all" />;
-    default:     return <div className="p-4 text-[10px] font-mono text-muted-foreground">Unknown module: {code}</div>;
+    case 'CBNK':   return <NewsView initialScope="keyword" initialValue="central bank" />;
+    case 'GEO':    return <NewsView initialScope="keyword" initialValue="geopolitics" />;
+    case 'WIRE':   return <NewsView initialScope="global" initialValue="" initialSource="all" />;
+    case 'MINT':   return <MarketInternals />;
+    case 'NETLIQ': return <NetLiquidity />;
+    case 'SQZZ':   return <SqueezeScanner />;
+    case 'ROTN':   return <SectorRotation />;
+    case 'ATTR':   return <AttributionView />;
+    case 'POSIZ':  return <PositionSizerView />;
+    default:       return <div className="p-4 text-[10px] font-mono text-muted-foreground">Unknown module: {code}</div>;
   }
 }
 

@@ -10,6 +10,8 @@ import OvmeSkew from "./OvmeSkew";
 import OvmeTermStruct from "./OvmeTermStruct";
 import Ovme3DSurface from "./Ovme3DSurface";
 import OvmeBacktest from "./OvmeBacktest";
+import LiveDataBar from "../LiveDataBar";
+import { useIbkrSurface } from "@/hooks/useIbkrSurface";
 
 export interface OvmeDeal {
   ticker: string;
@@ -39,22 +41,40 @@ export default function OvmeWorkspace({ ticker, sub, redact = false }: Props) {
     isCall: true,
   });
 
+  const ibkrSurface = useIbkrSurface();
+
   // Keep deal ticker/spot synced if user switches ticker at the header.
   useMemo(() => {
     setDeal((d) => ({ ...d, ticker, spot: SPOT_BY_TICKER[ticker] ?? d.spot, strike: Math.round(SPOT_BY_TICKER[ticker] ?? d.spot) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker]);
 
+  const liveBar = (
+    <LiveDataBar
+      ticker={ticker}
+      loading={ibkrSurface.loading}
+      error={ibkrSurface.error}
+      loadedTicker={ibkrSurface.data?.loadedTicker ?? null}
+      ts={ibkrSurface.data?.ts ?? null}
+      isLive={ibkrSurface.isLive}
+      onLoad={() => ibkrSurface.load(ticker)}
+    />
+  );
+
+  const liveIvAt = ibkrSurface.data?.loadedTicker === ticker
+    ? ibkrSurface.liveIvAt
+    : undefined;
+
   switch (sub) {
-    case "greeks":    return <OvmeGreeks deal={deal} redact={redact} />;
-    case "strategy":  return <OvmeStrategy deal={deal} redact={redact} />;
-    case "surface":   return <Ovme3DSurface ticker={ticker} redact={redact} />;
-    case "matrix":    return <OvmeMatrix deal={deal} redact={redact} />;
-    case "skew":      return <OvmeSkew deal={deal} redact={redact} />;
-    case "term":      return <OvmeTermStruct deal={deal} redact={redact} />;
-    case "btest":     return <OvmeBacktest deal={deal} redact={redact} />;
+    case "greeks":    return <><div className="mb-3">{liveBar}</div><OvmeGreeks deal={deal} redact={redact} /></>;
+    case "strategy":  return <><div className="mb-3">{liveBar}</div><OvmeStrategy deal={deal} redact={redact} /></>;
+    case "surface":   return <><div className="mb-3">{liveBar}</div><Ovme3DSurface ticker={ticker} redact={redact} liveIvAt={liveIvAt} /></>;
+    case "matrix":    return <><div className="mb-3">{liveBar}</div><OvmeMatrix deal={deal} redact={redact} /></>;
+    case "skew":      return <><div className="mb-3">{liveBar}</div><OvmeSkew deal={deal} redact={redact} liveIvAt={liveIvAt} /></>;
+    case "term":      return <><div className="mb-3">{liveBar}</div><OvmeTermStruct deal={deal} redact={redact} liveIvAt={liveIvAt} /></>;
+    case "btest":     return <><div className="mb-3">{liveBar}</div><OvmeBacktest deal={deal} redact={redact} /></>;
     case "pricing":
-    default:          return <OvmePricing deal={deal} setDeal={setDeal} redact={redact} />;
+    default:          return <><div className="mb-3">{liveBar}</div><OvmePricing deal={deal} setDeal={setDeal} redact={redact} /></>;
   }
 }
 

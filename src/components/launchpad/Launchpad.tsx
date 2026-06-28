@@ -13,7 +13,7 @@ import GridSettingsPopover from './GridSettingsPopover';
 import AlignmentGuides from './AlignmentGuides';
 
 const ResponsiveGrid = WidthProvider(Responsive);
-const HANDLES: Array<'s'|'w'|'e'|'n'|'sw'|'nw'|'se'|'ne'> = ['s','w','e','n','sw','nw','se','ne'];
+const HANDLES: Array<'sw'|'nw'|'se'|'ne'> = ['sw','nw','se','ne'];
 
 export default function Launchpad() {
   const {

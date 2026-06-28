@@ -340,13 +340,18 @@ router.post('/contradictions', verifyJwt, async (_req: AuthRequest, res) => {
 // ─── SEC EDGAR real filings ───────────────────────────────────────────────────
 
 const secCache = makeCache<unknown>(10 * 60_000);
-router.get('/sec', async (_req, res) => {
-  const hit = secCache.get('all');
+router.get('/sec', async (req, res) => {
+  const ticker = (req.query.ticker as string | undefined)?.toUpperCase().trim();
+  const cacheKey = ticker ?? 'all';
+  const hit = secCache.get(cacheKey);
   if (hit) { res.json(hit); return; }
-  const EDGAR_FORMS = ['8-K', '10-Q', 'S-1'];
+
+  const EDGAR_FORMS = ['8-K', '10-Q', '10-K'];
   try {
     const results = await Promise.allSettled(EDGAR_FORMS.map(async (type) => {
-      const url = `https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=${type}&dateb=&owner=include&count=40&search_text=&output=atom`;
+      const url = ticker
+        ? `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(ticker)}&type=${type}&dateb=&owner=include&count=20&search_text=&output=atom`
+        : `https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=${type}&dateb=&owner=include&count=40&search_text=&output=atom`;
       const r = await fetch(url, { headers: { 'User-Agent': 'trade-terminal/1.0 contact@tradeterm.local' }, signal: AbortSignal.timeout(10000) });
       if (!r.ok) throw new Error(`EDGAR ${type} ${r.status}`);
       const xml = await r.text();
@@ -356,13 +361,14 @@ router.get('/sec', async (_req, res) => {
         domain: 'sec.gov', seendate: new Date(item.pubDate).toISOString(),
         language: 'English', tone: 0, country: 'US',
         tier: 1 as const, topic: 'regulation',
+        formType: type,
       }));
     }));
     const seen = new Set<string>();
     const articles = results.flatMap(r => r.status === 'fulfilled' ? r.value : []).filter(a => !seen.has(a.id) && seen.add(a.id));
     articles.sort((a, b) => a.seendate < b.seendate ? 1 : -1);
     const data = { articles, fetchedAt: Date.now() };
-    secCache.set('all', data);
+    secCache.set(cacheKey, data);
     res.json(data);
   } catch (e) { res.json({ articles: [], fetchedAt: Date.now(), error: String(e) }); }
 });

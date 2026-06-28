@@ -1,18 +1,55 @@
-// WATCH — Compact watchlist (sample data; editable later).
+import { useEffect, useRef, useState } from 'react';
+import { apiGet } from '@/lib/api';
 import Sparkline from '@/components/tools/widgets/Sparkline';
 
-const WATCH = [
-  { sym: 'SPY', last: 524.10, pct: 0.42, spark: [521,522,521.5,523,523.5,523.8,524.1] },
-  { sym: 'QQQ', last: 448.30, pct: 0.81, spark: [444,445,444.5,446,447,447.8,448.3] },
-  { sym: 'NVDA',last: 870.50, pct: 4.82, spark: [820,830,825,840,855,860,870] },
-  { sym: 'TSLA',last: 220.80, pct: -3.15,spark: [232,228,225,222,224,221,220] },
-  { sym: 'AAPL',last: 195.30, pct: -0.18,spark: [196,195,196,195,195,195,195] },
-  { sym: 'MSFT',last: 425.10, pct: 0.62, spark: [422,423,422.5,424,424.5,424.8,425.1] },
-  { sym: 'GOOG',last: 178.40, pct: 1.12, spark: [176.5,177,176.8,177.5,178,178.2,178.4] },
-  { sym: 'BTC', last: 67430,  pct: 2.41, spark: [65800,66100,66000,66500,67000,67200,67430] },
-];
+const DEFAULT_SYMBOLS = ['SPY', 'QQQ', 'NVDA', 'TSLA', 'AAPL', 'MSFT', 'GOOGL', 'AMZN'];
+const REFRESH_MS = 30_000;
+
+type Quote = {
+  ticker: string;
+  price: number | null;
+  prevClose: number | null;
+  changePct: number | null;
+  error?: string;
+};
+
+function makeSpark(prev: number | null, close: number | null): number[] {
+  if (prev == null || close == null) return [0, 0, 0, 0, 0, 0, 0];
+  return [0, 0.15, 0.3, 0.5, 0.65, 0.8, 1].map(t => +(prev + (close - prev) * t).toFixed(4));
+}
 
 export default function WatchlistTile() {
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const symbolsRef = useRef(DEFAULT_SYMBOLS);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const data = await apiGet<{ quotes?: Quote[] }>(
+          `/api/market/security/batch-quotes?symbols=${symbolsRef.current.join(',')}`
+        );
+        if (!cancelled) setQuotes((data?.quotes ?? []) as Quote[]);
+      } catch {
+        // keep prior data on error
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    const id = window.setInterval(load, REFRESH_MS);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  if (loading && quotes.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <span className="text-[9px] font-mono text-muted-foreground animate-pulse">LOADING…</span>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="flex items-center gap-2 h-5 px-1 bg-surface-deep border-b border-border text-[8px] font-mono uppercase text-muted-foreground">
@@ -21,14 +58,20 @@ export default function WatchlistTile() {
         <span className="w-10">TREND</span>
         <span className="ml-auto">%CHG</span>
       </div>
-      {WATCH.map(r => {
-        const tone = r.pct >= 0 ? 'text-positive' : 'text-negative';
+      {quotes.map(q => {
+        const pct = q.changePct ?? 0;
+        const tone = pct >= 0 ? 'text-positive' : 'text-negative';
+        const spark = makeSpark(q.prevClose, q.price);
         return (
-          <div key={r.sym} className="flex items-center gap-2 h-6 px-1 border-b border-border/40 hover:bg-surface-elevated">
-            <span className="text-[10px] font-mono font-bold text-foreground w-12">{r.sym}</span>
-            <span className="text-[10px] font-mono tabular-nums text-foreground w-16 text-right">{r.last.toLocaleString()}</span>
-            <Sparkline values={r.spark} width={40} height={12} />
-            <span className={`ml-auto text-[10px] font-mono font-bold tabular-nums ${tone}`}>{r.pct >= 0 ? '+' : ''}{r.pct.toFixed(2)}%</span>
+          <div key={q.ticker} className="flex items-center gap-2 h-6 px-1 border-b border-border/40 hover:bg-surface-elevated">
+            <span className="text-[10px] font-mono font-bold text-foreground w-12">{q.ticker}</span>
+            <span className="text-[10px] font-mono tabular-nums text-foreground w-16 text-right">
+              {q.price != null ? q.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+            </span>
+            <Sparkline values={spark} width={40} height={12} />
+            <span className={`ml-auto text-[10px] font-mono font-bold tabular-nums ${tone}`}>
+              {pct >= 0 ? '+' : ''}{pct.toFixed(2)}%
+            </span>
           </div>
         );
       })}

@@ -4,6 +4,7 @@ import CommandLine from '@/components/CommandLine';
 import AccountMenu from '@/components/AccountMenu';
 import { MacroTab } from '@/components/TopNav';
 import { FxTab } from '@/components/ForexNav';
+import { CryptoTab } from '@/components/CryptoNav';
 import { ViewType } from '@/types/trade';
 import { usePrivacy } from '@/contexts/PrivacyContext';
 
@@ -12,6 +13,7 @@ interface Props {
   onNavigate?: (view: ViewType) => void;
   onMacroTab?: (tab: MacroTab) => void;
   onFxTab?: (tab: FxTab) => void;
+  onCryptoTab?: (tab: CryptoTab) => void;
 }
 
 function getMarketCountdown() {
@@ -46,7 +48,7 @@ function getMarketCountdown() {
   return { isOpen: false, label: 'AFTER-HRS', sub: `Opens ${fmtCountdown(nextOpenSecs)}` };
 }
 
-export default function TerminalHeader({ onAddTrade, onNavigate, onMacroTab, onFxTab }: Props) {
+export default function TerminalHeader({ onAddTrade, onNavigate, onMacroTab, onFxTab, onCryptoTab }: Props) {
   const { togglePrivacy } = usePrivacy();
   const [time, setTime] = useState('');
   const [market, setMarket] = useState(getMarketCountdown);
@@ -73,6 +75,7 @@ export default function TerminalHeader({ onAddTrade, onNavigate, onMacroTab, onF
           onTogglePrivacy={togglePrivacy}
           onMacroTab={(tab) => onMacroTab?.(tab)}
           onFxTab={(tab) => onFxTab?.(tab)}
+          onCryptoTab={(tab) => onCryptoTab?.(tab)}
         />
         <div className="h-4 w-px bg-accent-foreground/20" />
         <span className="text-accent-foreground/80 text-[10px] font-mono font-medium">{time}</span>

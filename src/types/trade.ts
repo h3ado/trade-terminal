@@ -53,7 +53,7 @@ export interface Trade {
   marketCondition?: string;    // e.g. "trending", "ranging", "volatile"
 }
 
-export type ViewType = 'dashboard' | 'trades' | 'analytics' | 'calendar' | 'performance' | 'journal' | 'playbooks' | 'mistakes' | 'goals' | 'macro' | 'cot' | 'globe' | 'news' | 'options' | 'forex' | 'quiz' | 'launchpad' | 'security' | 'mwei' | 'mwb' | 'mglco' | 'mtop' | 'meco' | 'mecst' | 'mecfc' | 'mecwb' | 'mstat' | 'mectr' | 'mcoun' | 'moecd' | 'meiu' | 'mfed' | 'mfomc' | 'mffip' | 'mcenb' | 'msrsk' | 'mwlst';
+export type ViewType = 'dashboard' | 'trades' | 'analytics' | 'calendar' | 'performance' | 'journal' | 'playbooks' | 'mistakes' | 'goals' | 'macro' | 'cot' | 'globe' | 'news' | 'options' | 'forex' | 'crypto' | 'quiz' | 'launchpad' | 'security' | 'mwei' | 'mwb' | 'mglco' | 'mtop' | 'meco' | 'mecst' | 'mecfc' | 'mecwb' | 'mstat' | 'mectr' | 'mcoun' | 'moecd' | 'meiu' | 'mfed' | 'mfomc' | 'mffip' | 'mcenb' | 'msrsk' | 'mwlst' | 'mint' | 'mnetliq' | 'msqzz' | 'mrotn' | 'attr' | 'posiz' | 'mcpi' | 'mppi' | 'munemp' | 'mnfp' | 'mgdp' | 'mpce' | 'mjolts' | 'mism';
 
 // Consolidated Bloomberg-style module ids for the Options workspace.
 export type OptionsTab =

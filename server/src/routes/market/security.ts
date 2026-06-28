@@ -138,6 +138,19 @@ export async function fetchCandlesFromAPI(ticker: string, interval: string, outp
 // Register fetchers for background sync
 registerFetchers(fetchQuoteFromAPI, fetchCandlesFromAPI);
 
+// GET /api/market/security/batch-quotes?symbols=SPY,QQQ,NVDA
+router.get('/batch-quotes', async (req, res) => {
+  const raw = (req.query.symbols as string) ?? '';
+  const tickers = raw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean).slice(0, 30);
+  if (tickers.length === 0) { res.json({ quotes: [], ts: Date.now() }); return; }
+  const results = await Promise.allSettled(tickers.map(t => fetchQuoteFromAPI(t)));
+  const quotes = results.map((r, i) => {
+    if (r.status === 'fulfilled') return r.value;
+    return { ticker: tickers[i], price: null, changePct: null, prevClose: null, error: String((r as PromiseRejectedResult).reason) };
+  });
+  res.json({ quotes, ts: Date.now() });
+});
+
 // GET /api/market/security/:ticker/overview
 router.get('/:ticker/overview', async (req, res) => {
   const ticker = req.params.ticker.toUpperCase();
@@ -735,7 +748,7 @@ router.get('/:ticker/peers', async (req, res) => {
           };
         }));
         const peers = peerData
-          .filter((r): r is PromiseFulfilledResult<Record<string, unknown>> => r.status === 'fulfilled')
+          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
           .map(r => r.value);
         await savePeers(ticker, peers, 'finnhub');
         res.json({ peers, cached: false }); return;
@@ -776,10 +789,10 @@ router.post('/:ticker/ai-analyst', async (req, res) => {
   if (!apiKey) { res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' }); return; }
 
   // Pull cached fundamentals for context (best-effort)
-  const cached = fundamentalsCache.get(ticker);
+  const cached = await getFundamentals(ticker);
   let context = '';
-  if (cached?.data) {
-    const d = cached.data as any;
+  if (cached) {
+    const d = cached as any;
     const p = d.profile ?? {};
     const ks = d.keyStats ?? {};
     const f = d.financials ?? {};

@@ -1,5 +1,6 @@
-// SCAN — Pre-market scanner. Compact blotter of gappers, unusual volume, news catalysts.
-import { useMemo, useState } from 'react';
+// SCAN — Pre-market scanner. Live gappers and unusual volume via backend API.
+import { useEffect, useMemo, useState } from 'react';
+import { apiGet } from '@/lib/api';
 import Sparkline from './Sparkline';
 
 type Cat = 'GAP' | 'VOL' | 'NEWS';
@@ -8,24 +9,11 @@ interface Row {
   sym: string;
   last: number;
   pct: number;
-  vol: number;     // ratio to average
+  vol: number;
   cat: Cat;
   news: boolean;
   spark: number[];
 }
-
-// Deterministic sample. Replace with live feed later.
-const SEED: Row[] = [
-  { sym: 'NVDA', last: 870.50, pct: 4.82, vol: 3.4, cat: 'NEWS', news: true,  spark: [820,830,825,840,855,860,870] },
-  { sym: 'TSLA', last: 220.80, pct: -3.15, vol: 2.1, cat: 'GAP',  news: false, spark: [232,228,225,222,224,221,220] },
-  { sym: 'AMD',  last: 168.20, pct: 2.74, vol: 2.8, cat: 'VOL',  news: false, spark: [160,162,161,164,166,167,168] },
-  { sym: 'AAPL', last: 195.30, pct: -0.18, vol: 1.4, cat: 'NEWS', news: true,  spark: [196,195,196,195,195,195,195] },
-  { sym: 'COIN', last: 245.10, pct: 6.32, vol: 4.2, cat: 'GAP',  news: true,  spark: [228,234,238,241,243,244,245] },
-  { sym: 'PLTR', last:  28.45, pct: 1.92, vol: 1.9, cat: 'VOL',  news: false, spark: [27.5,27.8,28.0,28.1,28.2,28.3,28.4] },
-  { sym: 'META', last: 502.10, pct: 0.71, vol: 1.1, cat: 'GAP',  news: false, spark: [498,499,500,501,500,501,502] },
-  { sym: 'MARA', last:  22.15, pct: -5.42, vol: 3.1, cat: 'VOL',  news: false, spark: [23.5,23.2,22.9,22.7,22.5,22.3,22.1] },
-  { sym: 'GME',  last:  18.20, pct: 8.91, vol: 5.8, cat: 'NEWS', news: true,  spark: [16.5,17.0,17.4,17.8,17.9,18.0,18.2] },
-];
 
 const catCls: Record<Cat, string> = {
   GAP:  'text-accent border-accent/40',
@@ -33,9 +21,43 @@ const catCls: Record<Cat, string> = {
   NEWS: 'text-positive border-positive/40',
 };
 
+const REFRESH_MS = 2 * 60_000;
+
 export default function PreMarketScan({ onPick }: { onPick?: (sym: string) => void } = {}) {
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [ts, setTs] = useState<number | null>(null);
   const [filter, setFilter] = useState<'ALL' | Cat>('ALL');
-  const rows = useMemo(() => (filter === 'ALL' ? SEED : SEED.filter(r => r.cat === filter)), [filter]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const data = await apiGet<{ rows?: Row[]; ts?: number }>('/api/market/scanner/premarket');
+        if (!cancelled) {
+          setRows((data?.rows ?? []) as Row[]);
+          setTs(data?.ts ?? null);
+        }
+      } catch {
+        // keep prior rows
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    const id = window.setInterval(load, REFRESH_MS);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  const visible = useMemo(() => (filter === 'ALL' ? rows : rows.filter(r => r.cat === filter)), [filter, rows]);
+
+  if (loading && rows.length === 0) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <span className="text-[9px] font-mono text-muted-foreground animate-pulse">SCANNING…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-1">
@@ -51,7 +73,9 @@ export default function PreMarketScan({ onPick }: { onPick?: (sym: string) => vo
             {f}
           </button>
         ))}
-        <span className="ml-auto text-[8px] font-mono text-muted-foreground/60">{rows.length} rows</span>
+        <span className="ml-auto text-[8px] font-mono text-muted-foreground/60">
+          {visible.length} rows {ts ? `· ${new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+        </span>
       </div>
 
       <div className="grid grid-cols-[44px_56px_50px_44px_36px_30px_14px] gap-1 px-1 py-1 border-b border-border bg-surface-deep">
@@ -64,7 +88,7 @@ export default function PreMarketScan({ onPick }: { onPick?: (sym: string) => vo
         <span />
       </div>
 
-      {rows.map(r => (
+      {visible.map(r => (
         <button
           key={r.sym}
           onClick={() => onPick?.(r.sym)}
@@ -83,6 +107,12 @@ export default function PreMarketScan({ onPick }: { onPick?: (sym: string) => vo
           <span className={`w-1.5 h-1.5 justify-self-center rounded-full ${r.news ? 'bg-accent' : 'bg-border'}`} />
         </button>
       ))}
+
+      {visible.length === 0 && !loading && (
+        <div className="px-2 py-3 text-[9px] font-mono text-muted-foreground text-center">
+          No movers — configure TWELVE_DATA_API_KEY or FINNHUB_API_KEY for live data
+        </div>
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { countries, MacroCountry } from '@/contexts/MacroCountryContext';
 import { useMacroCountry } from '@/contexts/MacroCountryContext';
 import { applyGlobePreset, saveGlobeView, loadGlobeView, listGlobeViews } from '@/components/globe/AdvancedGlobe';
 import { toast } from 'sonner';
+import { CryptoTab } from '@/components/CryptoNav';
 
 interface CommandDef {
   code: string;
@@ -14,6 +15,7 @@ interface CommandDef {
   view?: ViewType;
   macroTab?: MacroTab;
   fxTab?: FxTab;
+  cryptoTab?: CryptoTab;
   skipCountry?: boolean;
 }
 
@@ -23,6 +25,7 @@ interface Props {
   onTogglePrivacy: () => void;
   onMacroTab?: (tab: MacroTab) => void;
   onFxTab?: (tab: FxTab) => void;
+  onCryptoTab?: (tab: CryptoTab) => void;
 }
 
 export const COMMANDS: CommandDef[] = [
@@ -45,6 +48,14 @@ export const COMMANDS: CommandDef[] = [
   { code: 'CENB', label: 'Global Central Bank Portal',    action: 'navigate', view: 'mcenb', skipCountry: true },
   { code: 'SRSK', label: 'Sovereign Risk Monitor',        action: 'navigate', view: 'msrsk', skipCountry: true },
   { code: 'WLST', label: 'Market Watchlist',              action: 'navigate', view: 'mwlst', skipCountry: true },
+  { code: 'CPI',   label: 'Consumer Price Index — Inflation Overview',    action: 'navigate', view: 'mcpi',   skipCountry: true },
+  { code: 'PPI',   label: 'Producer Price Index — Cost Pipeline',         action: 'navigate', view: 'mppi',   skipCountry: true },
+  { code: 'UNEMP', label: 'Unemployment & Labor Market Overview',         action: 'navigate', view: 'munemp', skipCountry: true },
+  { code: 'NFP',   label: 'Non-Farm Payrolls — Employment Situation',     action: 'navigate', view: 'mnfp',   skipCountry: true },
+  { code: 'GDP',   label: 'Gross Domestic Product — Growth Overview',     action: 'navigate', view: 'mgdp',   skipCountry: true },
+  { code: 'PCE',   label: 'PCE Deflator — Fed Preferred Inflation Gauge', action: 'navigate', view: 'mpce',   skipCountry: true },
+  { code: 'JOLTS', label: 'JOLTS — Job Openings & Labor Turnover',        action: 'navigate', view: 'mjolts', skipCountry: true },
+  { code: 'ISM',   label: 'ISM Manufacturing & Services PMI',             action: 'navigate', view: 'mism',   skipCountry: true },
   { code: 'REAL', label: 'Real Rates & Breakevens',   action: 'navigate', view: 'macro', macroTab: 'realrates' },
   { code: 'BOP',  label: 'Balance of Payments',       action: 'navigate', view: 'macro', macroTab: 'bop' },
   { code: 'NRGY', label: 'Energy Balance',            action: 'navigate', view: 'macro', macroTab: 'energy' },
@@ -56,8 +67,14 @@ export const COMMANDS: CommandDef[] = [
   { code: 'WPE',  label: 'World P/E & Valuations',    action: 'navigate', view: 'macro', macroTab: 'wpe',  skipCountry: true },
   { code: 'WB',   label: 'World Sovereign Yields Monitor', action: 'navigate', view: 'mwb',   skipCountry: true },
   { code: 'GLCO', label: 'Global Commodities Monitor',     action: 'navigate', view: 'mglco', skipCountry: true },
-  { code: 'TOP',  label: 'Top News Firehose Monitor',      action: 'navigate', view: 'mtop',  skipCountry: true },
-  { code: 'LAUN', label: 'Launchpad (Multi-Panel)',        action: 'navigate', view: 'launchpad', skipCountry: true },
+  { code: 'TOP',    label: 'Top News Firehose Monitor',      action: 'navigate', view: 'mtop',    skipCountry: true },
+  { code: 'MINT',   label: 'Market Internals (TICK/TRIN/Breadth)', action: 'navigate', view: 'mint',   skipCountry: true },
+  { code: 'NETLIQ', label: 'Net Liquidity Model (Fed BST−TGA−RRP)', action: 'navigate', view: 'mnetliq', skipCountry: true },
+  { code: 'SQZZ',  label: 'Squeeze Scanner (TTM Squeeze)',  action: 'navigate', view: 'msqzz',  skipCountry: true },
+  { code: 'ROTN',  label: 'Sector Rotation (RRG)',          action: 'navigate', view: 'mrotn',  skipCountry: true },
+  { code: 'ATTR',  label: 'P&L Attribution (Clock/Grade/Hold/Sector)', action: 'navigate', view: 'attr',  skipCountry: true },
+  { code: 'POSIZ', label: 'Position Sizer (Kelly/Fixed/% Risk)',        action: 'navigate', view: 'posiz', skipCountry: true },
+  { code: 'LAUN',  label: 'Launchpad (Multi-Panel)',        action: 'navigate', view: 'launchpad', skipCountry: true },
   { code: 'LP',   label: 'Launchpad (alias)',              action: 'navigate', view: 'launchpad', skipCountry: true },
   { code: 'FX',    label: 'Forex Terminal',             action: 'navigate', view: 'forex', fxTab: 'home' },
   { code: 'WFX',   label: 'World FX Monitor',           action: 'navigate', view: 'forex', fxTab: 'wfx' },
@@ -75,6 +92,15 @@ export const COMMANDS: CommandDef[] = [
   { code: 'CARRY', label: 'FX Carry Trade Monitor',     action: 'navigate', view: 'forex', fxTab: 'carry' },
   { code: 'FXH',   label: 'FX History',                 action: 'navigate', view: 'forex', fxTab: 'fxh' },
   { code: 'FXNW',  label: 'FX News & Wires',            action: 'navigate', view: 'forex', fxTab: 'fxnw' },
+  // Crypto Terminal
+  { code: 'CRYP', label: 'Crypto Terminal — Overview',      action: 'navigate', view: 'crypto', cryptoTab: 'home'    },
+  { code: 'MKTD', label: 'Crypto Markets — Top 50',         action: 'navigate', view: 'crypto', cryptoTab: 'markets' },
+  { code: 'BTC',  label: 'Bitcoin In-Depth',                action: 'navigate', view: 'crypto', cryptoTab: 'btc'     },
+  { code: 'ETH',  label: 'Ethereum In-Depth',               action: 'navigate', view: 'crypto', cryptoTab: 'eth'     },
+  { code: 'DEFI', label: 'DeFi TVL Dashboard',              action: 'navigate', view: 'crypto', cryptoTab: 'defi'    },
+  { code: 'FRAT', label: 'Crypto Derivatives & Funding',    action: 'navigate', view: 'crypto', cryptoTab: 'deriv'   },
+  { code: 'CRYS', label: 'Crypto Sentiment / Fear & Greed', action: 'navigate', view: 'crypto', cryptoTab: 'sent'    },
+  { code: 'CRNW', label: 'Crypto News Feed',                action: 'navigate', view: 'crypto', cryptoTab: 'news'    },
   { code: 'COT',  label: 'Commitments of Traders',    action: 'navigate', view: 'cot' },
   { code: 'JRNL', label: 'Trading Journal Dashboard', action: 'navigate', view: 'dashboard' },
   { code: 'TRDS', label: 'Trades',                    action: 'navigate', view: 'trades' },
@@ -111,7 +137,8 @@ export const COMMANDS: CommandDef[] = [
   { code: 'QSCR', label: 'Q-Scores',                   action: 'function' },
   { code: 'SCAN', label: 'Options Screener',           action: 'function' },
   // Security page
-  { code: 'DES',  label: 'Security Page — DES {TICKER}', action: 'function' },
+  { code: 'DES',  label: 'Security Page — DES {TICKER}',      action: 'function' },
+  { code: 'EQ',   label: 'Equity Security  — EQ {TICKER}',    action: 'function' },
   // legacy short codes
   { code: 'OPT',  label: 'Options Workspace (alias DASH)', action: 'function' },
   { code: 'SPRD', label: 'Spread Builder',             action: 'function' },
@@ -123,7 +150,7 @@ export const COMMANDS: CommandDef[] = [
 ];
 
 
-export default function CommandLine({ onNavigate, onAddTrade, onTogglePrivacy, onMacroTab, onFxTab }: Props) {
+export default function CommandLine({ onNavigate, onAddTrade, onTogglePrivacy, onMacroTab, onFxTab, onCryptoTab }: Props) {
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -163,6 +190,7 @@ export default function CommandLine({ onNavigate, onAddTrade, onTogglePrivacy, o
       onNavigate(cmd.view);
       if (cmd.macroTab && onMacroTab) onMacroTab(cmd.macroTab);
       if (cmd.fxTab && onFxTab) onFxTab(cmd.fxTab);
+      if (cmd.cryptoTab && onCryptoTab) onCryptoTab(cmd.cryptoTab);
       if (cmd.code === 'GLOB') {
         try { localStorage.setItem('lovable:userpref:globe.viewMode', JSON.stringify('3D')); } catch {}
         window.dispatchEvent(new CustomEvent('lovable:globe-set-view-mode', { detail: '3D' }));
@@ -366,7 +394,7 @@ export default function CommandLine({ onNavigate, onAddTrade, onTogglePrivacy, o
       setValue(''); setShowHelp(false); inputRef.current?.blur();
       return;
     }
-    if (cmd.code === 'DES') {
+    if (cmd.code === 'DES' || cmd.code === 'EQ') {
       const tokens = raw.trim().toUpperCase().split(/\s+/).slice(1);
       const ticker = tokens.find(t => /^[A-Z]{1,6}$/.test(t));
       if (ticker) {

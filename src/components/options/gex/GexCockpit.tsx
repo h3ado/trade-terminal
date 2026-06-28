@@ -12,6 +12,8 @@ import GexTermHeatmap from "./GexTermHeatmap";
 import GexIntradayEvolution from "./GexIntradayEvolution";
 import VannaCharmProfiles from "./VannaCharmProfiles";
 import OptionDetailDrawer from "../shared/OptionDetailDrawer";
+import LiveDataBar from "../LiveDataBar";
+import { useIbkrGex } from "@/hooks/useIbkrGex";
 
 interface Props { ticker: string; redact?: boolean }
 
@@ -19,8 +21,25 @@ export default function GexCockpit({ ticker, redact }: Props) {
   const [filter, setFilter] = useState<GexExpiryFilterKey>("ALL");
   const [drillStrike, setDrillStrike] = useState<number | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const ibkrGex = useIbkrGex();
 
   const { spot, strikes, allCells, cells, agg, levels, intraday } = useMemo(() => {
+    const live = ibkrGex.data;
+    if (live && live.loadedTicker === ticker) {
+      const expiries = GEX_EXPIRY_GROUPS[filter];
+      const filteredCells = live.cells.filter((c) => expiries.includes(c.expiry));
+      const filteredAgg = aggregateByStrike(filteredCells);
+      const liveStrikes = [...new Set(live.cells.map((c) => c.strike))].sort((a, b) => a - b);
+      return {
+        spot: live.spot,
+        strikes: liveStrikes,
+        allCells: live.cells,
+        cells: filteredCells,
+        agg: filteredAgg,
+        levels: live.levels,
+        intraday: gexIntraday(ticker, live.spot, 78),
+      };
+    }
     const spot = gexSpot(ticker);
     const strikes = gexStrikes(spot, 21, 2);
     const allCells = gexTermGrid(ticker, spot, strikes);
@@ -30,7 +49,7 @@ export default function GexCockpit({ ticker, redact }: Props) {
     const levels = gexKeyLevels(ticker, spot, agg);
     const intraday = gexIntraday(ticker, spot, 78);
     return { spot, strikes, allCells, cells, agg, levels, intraday };
-  }, [ticker, filter]);
+  }, [ticker, filter, ibkrGex.data]);
 
   const vcRows = agg.map((a) => ({ strike: a.strike, vanna: a.vanna, charm: a.charm }));
 
@@ -39,6 +58,16 @@ export default function GexCockpit({ ticker, redact }: Props) {
   return (
     <div ref={ref} className="space-y-3">
       <GexKpiPanel ticker={ticker} redact={redact} />
+
+      <LiveDataBar
+        ticker={ticker}
+        loading={ibkrGex.loading}
+        error={ibkrGex.error}
+        loadedTicker={ibkrGex.data?.loadedTicker ?? null}
+        ts={ibkrGex.data?.ts ?? null}
+        isLive={ibkrGex.isLive}
+        onLoad={() => ibkrGex.load(ticker)}
+      />
 
       <div className="card-terminal p-2 flex flex-wrap items-center justify-between gap-2">
         <GexExpiryFilter value={filter} onChange={setFilter} />

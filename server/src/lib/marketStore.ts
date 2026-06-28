@@ -183,8 +183,8 @@ export async function saveFundamentals(ticker: string, data: Record<string, unkn
   const source = (data._source as string) ?? 'unknown';
   await prisma.marketFundamentals.upsert({
     where: { ticker },
-    update: { data, source, fetchedAt: new Date() },
-    create: { ticker, data, source },
+    update: { data: data as any, source, fetchedAt: new Date() },
+    create: { ticker, data: data as any, source },
   }).catch(e => console.error('[marketStore] saveFundamentals error:', e));
 }
 
@@ -199,8 +199,8 @@ export async function getPeers(ticker: string): Promise<Record<string, unknown>[
 export async function savePeers(ticker: string, peers: Record<string, unknown>[], source = 'unknown'): Promise<void> {
   await prisma.marketPeers.upsert({
     where: { ticker },
-    update: { peers, source, fetchedAt: new Date() },
-    create: { ticker, peers, source },
+    update: { peers: peers as any, source, fetchedAt: new Date() },
+    create: { ticker, peers: peers as any, source },
   }).catch(e => console.error('[marketStore] savePeers error:', e));
 }
 

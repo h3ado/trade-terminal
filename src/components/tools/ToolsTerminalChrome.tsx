@@ -5,6 +5,7 @@ import { ChevronLeft } from 'lucide-react';
 import { usePrivacy } from '@/contexts/PrivacyContext';
 import { useTrades } from '@/contexts/TradeContext';
 import { calcWinRate, calcTotalPnl } from '@/types/trade';
+import { apiGet } from '@/lib/api';
 
 // ── CMD HEADER ──────────────────────────────────────────────────────
 export function ToolsCmdHeader({
@@ -154,27 +155,56 @@ export function ToolsFKeyBar({ onJump }: { onJump: (cat: string) => void }) {
 }
 
 // ── MARQUEE TAPE ────────────────────────────────────────────────────
-const TAPE_SYMBOLS = [
-  { sym: 'SPY', val: '482.32', chg: '+0.42%', pos: true },
-  { sym: 'QQQ', val: '502.10', chg: '+0.71%', pos: true },
-  { sym: 'AAPL', val: '195.30', chg: '-0.18%', pos: false },
-  { sym: 'NVDA', val: '870.50', chg: '+1.84%', pos: true },
-  { sym: 'TSLA', val: '220.80', chg: '-1.22%', pos: false },
-  { sym: 'ES', val: '5432.50', chg: '+0.23%', pos: true },
-  { sym: 'NQ', val: '19245.75', chg: '+0.36%', pos: true },
-  { sym: 'CL', val: '78.62', chg: '-1.11%', pos: false },
-  { sym: 'GC', val: '2342.30', chg: '+0.36%', pos: true },
-  { sym: 'DXY', val: '104.32', chg: '-0.15%', pos: false },
-  { sym: 'BTC', val: '67430', chg: '+2.10%', pos: true },
-  { sym: 'VIX', val: '14.82', chg: '-3.20%', pos: false },
+const TAPE_FETCH_SYMBOLS = 'SPY,QQQ,AAPL,NVDA,TSLA,ES=F,NQ=F,CL=F,GC=F,BTC-USD,^VIX';
+
+type TapeItem = { sym: string; val: string; chg: string; pos: boolean };
+
+const TAPE_FALLBACK: TapeItem[] = [
+  { sym: 'SPY', val: '—', chg: '—', pos: true },
+  { sym: 'QQQ', val: '—', chg: '—', pos: true },
+  { sym: 'AAPL', val: '—', chg: '—', pos: true },
+  { sym: 'NVDA', val: '—', chg: '—', pos: true },
+  { sym: 'TSLA', val: '—', chg: '—', pos: false },
+  { sym: 'ES', val: '—', chg: '—', pos: true },
+  { sym: 'NQ', val: '—', chg: '—', pos: true },
+  { sym: 'CL', val: '—', chg: '—', pos: false },
+  { sym: 'GC', val: '—', chg: '—', pos: true },
+  { sym: 'BTC', val: '—', chg: '—', pos: true },
+  { sym: 'VIX', val: '—', chg: '—', pos: false },
 ];
 
 export function ToolsTape() {
-  const items = [...TAPE_SYMBOLS, ...TAPE_SYMBOLS];
+  const [items, setItems] = useState<TapeItem[]>(TAPE_FALLBACK);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const data = await apiGet<{ quotes?: { ticker: string; price: number; changePct: number }[] }>(
+          `/api/market/security/batch-quotes?symbols=${TAPE_FETCH_SYMBOLS}`
+        );
+        if (!data?.quotes?.length || cancelled) return;
+        const mapped: TapeItem[] = data.quotes.map(q => {
+          const sym = q.ticker.replace(/^\^/, '').replace('=F', '').replace('-USD', '');
+          const pos = (q.changePct ?? 0) >= 0;
+          const chg = `${pos ? '+' : ''}${(q.changePct ?? 0).toFixed(2)}%`;
+          const p = q.price;
+          const val = p >= 10000 ? p.toFixed(0) : p.toFixed(2);
+          return { sym, val, chg, pos };
+        });
+        if (!cancelled) setItems(mapped);
+      } catch {}
+    };
+    load();
+    const id = setInterval(load, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  const doubled = [...items, ...items];
   return (
     <div className="border-t border-border bg-surface-deep overflow-hidden flex-shrink-0 h-5 relative group">
       <div className="absolute inset-y-0 left-0 flex items-center gap-3 animate-marquee whitespace-nowrap group-hover:[animation-play-state:paused]">
-        {items.map((t, i) => (
+        {doubled.map((t, i) => (
           <span key={i} className="flex items-center gap-1 text-[9px] font-mono tabular-nums">
             <span className="text-accent font-bold">{t.sym}</span>
             <span className="text-foreground">{t.val}</span>

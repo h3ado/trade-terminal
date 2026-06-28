@@ -12,6 +12,12 @@ import OpraPricer from './tools/widgets/OpraPricer';
 import CorrMatrix from './tools/widgets/CorrMatrix';
 import PreMarketScan from './tools/widgets/PreMarketScan';
 import CalcHub from './tools/widgets/CalcHub';
+import MiniChartWidget from './tools/widgets/MiniChartWidget';
+import SessionPrepWidget from './tools/widgets/SessionPrepWidget';
+import GreeksAggrWidget from './tools/widgets/GreeksAggrWidget';
+import { useEarningsCalendar } from '@/hooks/useEarningsCalendar';
+import { useFXRates } from '@/hooks/useFXRates';
+import { useIndices } from '@/hooks/useIndices';
 
 // Context allows the panel to inject a per-widget CMD code into every ToolSection
 // without touching all 37 call sites.
@@ -897,7 +903,8 @@ type WidgetId =
   | 'liveStream'
   | 'pivotPoints' | 'atrCalc' | 'lotSize' | 'breakevenCalc' | 'volCalc' | 'mtfBias'
   | 'positions' | 'riskMonitor' | 'alertsTile'
-  | 'calcHub' | 'opraPricer' | 'preMarketScan';
+  | 'calcHub' | 'opraPricer' | 'preMarketScan'
+  | 'miniChart' | 'sessionPrep' | 'greeksAggr';
 
 // IDs removed from the registry. We quietly drop them from any saved config so users
 // who had them pinned don't see broken tiles after the consolidation.
@@ -922,6 +929,7 @@ const WIDGET_CMD: Record<WidgetId, string> = {
   futuresMonitor: 'FUT', earningsCalendar: 'EARN', flowMonitor: 'FLOW', marketHours: 'MKTS',
   econCalendar: 'ECON',
   calcHub: 'CALC', opraPricer: 'OPRA', preMarketScan: 'SCAN',
+  miniChart: 'CHRT', sessionPrep: 'PREP', greeksAggr: 'GRKS',
 };
 
 type WidgetCategory = 'trading' | 'macro' | 'analytics' | 'tools' | 'flow';
@@ -971,6 +979,9 @@ const DEFAULT_WIDGETS: { id: WidgetId; label: string; icon: string; visible: boo
   { id: 'sessionTimer', label: 'Session Timer', icon: '⏱', visible: true, category: 'tools' },
   { id: 'hotkeys', label: 'Hotkeys Reference', icon: '⌨', visible: false, category: 'tools' },
   { id: 'liveStream', label: 'Live Stream', icon: '📺', visible: true, category: 'tools' },
+  { id: 'miniChart', label: 'Mini Chart', icon: '📈', visible: true, category: 'analytics' },
+  { id: 'sessionPrep', label: 'Session Prep', icon: '☀', visible: true, category: 'trading' },
+  { id: 'greeksAggr', label: 'Portfolio Greeks', icon: 'Δ', visible: true, category: 'trading' },
 ];
 
 const STORAGE_KEY = 'tools-widget-config-v4';
@@ -999,6 +1010,10 @@ export default function ToolsPanel({ collapsed, onToggle }: { collapsed: boolean
   const [widgets, setWidgets] = useState(loadWidgetConfig);
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets)); }, [widgets]);
+
+  const { events: earnEvents, loading: earnLoading } = useEarningsCalendar({ window: 'week' });
+  const { rates: fxRates } = useFXRates();
+  const { indices } = useIndices();
 
   const toggleWidget = (id: WidgetId) => setWidgets(ws => ws.map(w => w.id === id ? { ...w, visible: !w.visible } : w));
   const moveWidget = useCallback((idx: number, dir: -1 | 1) => {
@@ -1365,7 +1380,7 @@ export default function ToolsPanel({ collapsed, onToggle }: { collapsed: boolean
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const blockWheel = (e: WheelEvent) => { e.preventDefault(); e.stopPropagation(); };
+    const blockWheel = (e: WheelEvent) => { e.preventDefault(); e.stopPropagation(); scrollBy(e.deltaY); };
     const blockTouch = (e: TouchEvent) => { e.preventDefault(); e.stopPropagation(); };
     el.addEventListener('wheel', blockWheel, { passive: false });
     el.addEventListener('touchmove', blockTouch, { passive: false });
@@ -2168,6 +2183,30 @@ export default function ToolsPanel({ collapsed, onToggle }: { collapsed: boolean
           </ToolSection>
         );
 
+      case 'miniChart':
+        return (
+          <ToolSection title="MINI CHART" icon="📈" defaultOpen color="accent">
+            <div className="h-56">
+              <MiniChartWidget />
+            </div>
+          </ToolSection>
+        );
+
+      case 'sessionPrep':
+        return (
+          <ToolSection title="SESSION PREP" icon="☀" defaultOpen color="yellow">
+            <SessionPrepWidget />
+          </ToolSection>
+        );
+
+      case 'greeksAggr':
+        return (
+          <ToolSection title="PORTFOLIO GREEKS" icon="Δ" defaultOpen color="purple">
+            <div className="h-52">
+              <GreeksAggrWidget />
+            </div>
+          </ToolSection>
+        );
 
       case 'macroSnapshot': {
         const snapshotData = [
@@ -2308,30 +2347,45 @@ export default function ToolsPanel({ collapsed, onToggle }: { collapsed: boolean
       }
 
       case 'dxyTracker': {
-        const fxPairs = [
-          { pair: 'DXY', value: '104.32', chg: '-0.15%', positive: false, bar: 62 },
-          { pair: 'EUR/USD', value: '1.0842', chg: '+0.08%', positive: true, bar: 54 },
-          { pair: 'GBP/USD', value: '1.2718', chg: '+0.12%', positive: true, bar: 58 },
-          { pair: 'USD/JPY', value: '157.22', chg: '+0.22%', positive: false, bar: 78 },
-          { pair: 'USD/CHF', value: '0.8912', chg: '-0.05%', positive: true, bar: 45 },
-          { pair: 'AUD/USD', value: '0.6644', chg: '+0.18%', positive: true, bar: 42 },
-          { pair: 'USD/CAD', value: '1.3688', chg: '-0.08%', positive: true, bar: 52 },
-          { pair: 'NZD/USD', value: '0.6112', chg: '+0.10%', positive: true, bar: 38 },
+        const fxMap = Object.fromEntries(fxRates.map(r => [r.ccy, r]));
+        const pairDef = [
+          { pair: 'EUR/USD', base: 'EUR', quote: 'USD', inverted: false },
+          { pair: 'GBP/USD', base: 'GBP', quote: 'USD', inverted: false },
+          { pair: 'USD/JPY', base: 'JPY', quote: 'USD', inverted: true },
+          { pair: 'USD/CHF', base: 'CHF', quote: 'USD', inverted: true },
+          { pair: 'AUD/USD', base: 'AUD', quote: 'USD', inverted: false },
+          { pair: 'USD/CAD', base: 'CAD', quote: 'USD', inverted: true },
+          { pair: 'NZD/USD', base: 'NZD', quote: 'USD', inverted: false },
         ];
+        const livePairs = pairDef.map(def => {
+          const r = fxMap[def.base];
+          if (!r || r.usd == null) return { pair: def.pair, value: '—', chg: '—', positive: true, bar: 50 };
+          const rate = def.inverted ? 1 / r.usd : r.usd;
+          const changePct = r.change_pct ?? 0;
+          const positive = def.inverted ? changePct <= 0 : changePct >= 0;
+          const dp = rate < 10 ? 4 : rate < 100 ? 2 : 0;
+          return {
+            pair: def.pair,
+            value: rate.toFixed(dp),
+            chg: `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`,
+            positive,
+            bar: Math.min(100, Math.max(0, 50 + changePct * 10)),
+          };
+        });
         const dxyComponents = [
-          { ccy: 'EUR', weight: '57.6%', impact: '-0.09%' },
-          { ccy: 'JPY', weight: '13.6%', impact: '+0.03%' },
-          { ccy: 'GBP', weight: '11.9%', impact: '-0.01%' },
-          { ccy: 'CAD', weight: '9.1%', impact: '+0.01%' },
-          { ccy: 'SEK', weight: '4.2%', impact: '-0.01%' },
-          { ccy: 'CHF', weight: '3.6%', impact: '+0.00%' },
+          { ccy: 'EUR', weight: '57.6%' },
+          { ccy: 'JPY', weight: '13.6%' },
+          { ccy: 'GBP', weight: '11.9%' },
+          { ccy: 'CAD', weight: '9.1%' },
+          { ccy: 'SEK', weight: '4.2%' },
+          { ccy: 'CHF', weight: '3.6%' },
         ];
         return (
           <ToolSection title="DXY & FX TRACKER" icon="💵" color="cyan">
             <div className="space-y-0 mb-3">
-              {fxPairs.map(p => (
+              {livePairs.map(p => (
                 <div key={p.pair} className="flex items-center gap-1.5 py-1.5 border-b border-grid-line last:border-0">
-                  <span className={`text-[9px] font-mono font-bold w-14 ${p.pair === 'DXY' ? 'text-accent' : 'text-muted-foreground'}`}>{p.pair}</span>
+                  <span className="text-[9px] font-mono font-bold w-14 text-muted-foreground">{p.pair}</span>
                   <div className="flex-1 h-2 bg-surface-elevated border border-grid-line">
                     <div className={`h-full ${p.positive ? 'bg-positive/30' : 'bg-negative/30'}`} style={{ width: `${p.bar}%` }} />
                   </div>
@@ -2342,39 +2396,62 @@ export default function ToolsPanel({ collapsed, onToggle }: { collapsed: boolean
             </div>
             <div className="border-t border-border pt-2">
               <div className="text-[9px] font-mono text-accent font-bold mb-1.5">DXY COMPONENT WEIGHTS</div>
-              {dxyComponents.map(c => (
-                <div key={c.ccy} className="flex items-center justify-between py-1 border-b border-grid-line last:border-0">
-                  <span className="text-[9px] font-mono text-muted-foreground">{c.ccy}</span>
-                  <span className="text-[9px] font-mono text-foreground">{c.weight}</span>
-                  <span className={`text-[8px] font-mono font-bold ${c.impact.startsWith('+') ? 'text-positive' : c.impact.startsWith('-') ? 'text-negative' : 'text-muted-foreground'}`}>{c.impact}</span>
-                </div>
-              ))}
+              {dxyComponents.map(c => {
+                const r = fxMap[c.ccy];
+                const pct = r?.change_pct ?? null;
+                const impact = pct !== null
+                  ? `${pct >= 0 ? '+' : ''}${(pct * (parseFloat(c.weight) / 100)).toFixed(2)}%`
+                  : '—';
+                const tone = impact.startsWith('+') ? 'text-positive' : impact.startsWith('-') ? 'text-negative' : 'text-muted-foreground';
+                return (
+                  <div key={c.ccy} className="flex items-center justify-between py-1 border-b border-grid-line last:border-0">
+                    <span className="text-[9px] font-mono text-muted-foreground">{c.ccy}</span>
+                    <span className="text-[9px] font-mono text-foreground">{c.weight}</span>
+                    <span className={`text-[8px] font-mono font-bold ${tone}`}>{impact}</span>
+                  </div>
+                );
+              })}
             </div>
           </ToolSection>
         );
       }
 
       case 'futuresMonitor': {
+        const idxByAbbr = Object.fromEntries(indices.map(i => [i.abbr, i]));
+        const fmtIdx = (abbr: string, sym: string, name: string) => {
+          const q = idxByAbbr[abbr];
+          if (!q?.close) return { sym, name, price: '—', chg: '—', pct: '—', pos: true, live: false };
+          const pct = q.change_pct ?? 0;
+          const chg = q.prev_close ? (q.close - q.prev_close) : 0;
+          return {
+            sym, name,
+            price: q.close.toLocaleString('en-US', { maximumFractionDigits: 2 }),
+            chg: `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}`,
+            pct: `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`,
+            pos: pct >= 0,
+            live: true,
+          };
+        };
         const futures = [
-          { sym: 'ES', name: 'S&P 500', price: '5,432.50', chg: '+12.25', pct: '+0.23%', vol: '1.2M', pos: true },
-          { sym: 'NQ', name: 'Nasdaq 100', price: '19,245.75', chg: '+68.50', pct: '+0.36%', vol: '892K', pos: true },
-          { sym: 'YM', name: 'Dow Jones', price: '40,185', chg: '-42', pct: '-0.10%', vol: '445K', pos: false },
-          { sym: 'RTY', name: 'Russell 2K', price: '2,052.80', chg: '+4.60', pct: '+0.22%', vol: '312K', pos: true },
-          { sym: 'ZB', name: '30Y T-Bond', price: '118-16', chg: '-0-08', pct: '-0.04%', vol: '620K', pos: false },
-          { sym: 'ZN', name: '10Y T-Note', price: '110-24', chg: '-0-04', pct: '-0.02%', vol: '1.8M', pos: false },
-          { sym: 'GC', name: 'Gold', price: '2,342.30', chg: '+8.40', pct: '+0.36%', vol: '245K', pos: true },
-          { sym: 'CL', name: 'Crude Oil', price: '78.62', chg: '-0.88', pct: '-1.11%', vol: '1.1M', pos: false },
-          { sym: 'SI', name: 'Silver', price: '29.48', chg: '+0.32', pct: '+1.10%', vol: '148K', pos: true },
-          { sym: '6E', name: 'Euro FX', price: '1.0845', chg: '+0.0008', pct: '+0.07%', vol: '380K', pos: true },
-          { sym: 'NG', name: 'Natural Gas', price: '2.648', chg: '-0.042', pct: '-1.56%', vol: '520K', pos: false },
-          { sym: 'HG', name: 'Copper', price: '4.5820', chg: '+0.0340', pct: '+0.75%', vol: '95K', pos: true },
+          fmtIdx('SPX', 'ES', 'S&P 500'),
+          fmtIdx('NDX', 'NQ', 'Nasdaq 100'),
+          fmtIdx('DJI', 'YM', 'Dow Jones'),
+          fmtIdx('RTY', 'RTY', 'Russell 2K'),
+          { sym: 'ZB', name: '30Y T-Bond', price: '—', chg: '—', pct: '—', pos: false, live: false },
+          { sym: 'ZN', name: '10Y T-Note', price: '—', chg: '—', pct: '—', pos: false, live: false },
+          { sym: 'GC', name: 'Gold', price: '—', chg: '—', pct: '—', pos: true, live: false },
+          { sym: 'CL', name: 'Crude Oil', price: '—', chg: '—', pct: '—', pos: false, live: false },
+          { sym: 'SI', name: 'Silver', price: '—', chg: '—', pct: '—', pos: true, live: false },
+          { sym: '6E', name: 'Euro FX', price: '—', chg: '—', pct: '—', pos: true, live: false },
+          { sym: 'NG', name: 'Natural Gas', price: '—', chg: '—', pct: '—', pos: false, live: false },
+          { sym: 'HG', name: 'Copper', price: '—', chg: '—', pct: '—', pos: true, live: false },
         ];
         return (
           <ToolSection title="FUTURES MONITOR" icon="📟" color="pink">
             <div className="space-y-0">
               {futures.map(f => (
                 <div key={f.sym} className="flex items-center gap-1 py-1.5 border-b border-grid-line last:border-0">
-                  <span className="text-[9px] font-mono font-bold text-accent w-7">{f.sym}</span>
+                  <span className={`text-[9px] font-mono font-bold w-7 ${f.live ? 'text-accent' : 'text-muted-foreground/50'}`}>{f.sym}</span>
                   <span className="text-[8px] font-mono text-muted-foreground w-16 truncate">{f.name}</span>
                   <span className="text-[10px] font-mono font-bold text-foreground flex-1 text-right">{f.price}</span>
                   <span className={`text-[8px] font-mono font-bold w-14 text-right ${f.pos ? 'text-positive' : 'text-negative'}`}>{f.chg}</span>
@@ -2382,44 +2459,53 @@ export default function ToolsPanel({ collapsed, onToggle }: { collapsed: boolean
                 </div>
               ))}
             </div>
-            <div className="mt-2 text-[8px] font-mono text-muted-foreground/50 text-center">Simulated • Updates on refresh</div>
           </ToolSection>
         );
       }
 
       case 'earningsCalendar': {
-        const earnings = [
-          { date: 'Apr 14', sym: 'GS', name: 'Goldman Sachs', eps: '$8.72', rev: '$12.8B', time: 'BMO', surprise: '+4.2%' },
-          { date: 'Apr 15', sym: 'BAC', name: 'Bank of America', eps: '$0.82', rev: '$25.5B', time: 'BMO', surprise: '' },
-          { date: 'Apr 15', sym: 'UNH', name: 'UnitedHealth', eps: '$6.73', rev: '$99.8B', time: 'BMO', surprise: '' },
-          { date: 'Apr 16', sym: 'ASML', name: 'ASML Holding', eps: '$5.28', rev: '$7.1B', time: 'BMO', surprise: '' },
-          { date: 'Apr 17', sym: 'NFLX', name: 'Netflix', eps: '$4.52', rev: '$9.3B', time: 'AMC', surprise: '' },
-          { date: 'Apr 17', sym: 'TSM', name: 'Taiwan Semi', eps: '$1.82', rev: '$25.8B', time: 'BMO', surprise: '' },
-          { date: 'Apr 22', sym: 'TSLA', name: 'Tesla', eps: '$0.42', rev: '$21.4B', time: 'AMC', surprise: '' },
-          { date: 'Apr 23', sym: 'META', name: 'Meta Platforms', eps: '$4.36', rev: '$38.2B', time: 'AMC', surprise: '' },
-        ];
+        const fmtDate = (ts: string) => {
+          const d = new Date(ts);
+          return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        };
         return (
           <ToolSection title="EARNINGS CALENDAR" icon="📅" color="pink">
+            {earnLoading && (
+              <div className="text-[9px] font-mono text-muted-foreground/60 text-center py-4">Loading…</div>
+            )}
+            {!earnLoading && earnEvents.length === 0 && (
+              <div className="text-[9px] font-mono text-muted-foreground/60 text-center py-4">No earnings this week</div>
+            )}
             <div className="space-y-0">
-              {earnings.map((e, i) => (
-                <div key={i} className="py-1.5 px-1 border-b border-grid-line last:border-0">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[8px] font-mono text-muted-foreground">{e.date}</span>
-                      <span className="text-[10px] font-mono font-bold text-foreground">{e.sym}</span>
-                      <span className="text-[8px] font-mono text-muted-foreground truncate">{e.name}</span>
+              {earnEvents.map((e) => {
+                const timeCls = e.when === 'BMO'
+                  ? 'text-[hsl(45,100%,60%)] border-[hsl(45,100%,60%)]/30 bg-[hsl(45,100%,60%)]/10'
+                  : 'text-[hsl(270,70%,70%)] border-[hsl(270,70%,70%)]/30 bg-[hsl(270,70%,70%)]/10';
+                const imp = e.importance === 3 ? '★★★' : e.importance === 2 ? '★★' : '★';
+                return (
+                  <div key={e.id} className="py-1.5 px-1 border-b border-grid-line last:border-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[8px] font-mono text-muted-foreground flex-shrink-0">{fmtDate(e.ts)}</span>
+                        <span className="text-[10px] font-mono font-bold text-foreground flex-shrink-0">{e.ticker}</span>
+                        <span className="text-[8px] font-mono text-muted-foreground truncate">{e.label}</span>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className="text-[7px] font-mono text-muted-foreground/50">{imp}</span>
+                        {e.when && (
+                          <span className={`text-[7px] font-mono font-bold px-1 py-0.5 border ${timeCls}`}>{e.when}</span>
+                        )}
+                      </div>
                     </div>
-                    <span className={`text-[7px] font-mono font-bold px-1 py-0.5 border ${e.time === 'BMO' ? 'text-[hsl(45,100%,60%)] border-[hsl(45,100%,60%)]/30 bg-[hsl(45,100%,60%)]/10' : 'text-[hsl(270,70%,70%)] border-[hsl(270,70%,70%)]/30 bg-[hsl(270,70%,70%)]/10'}`}>
-                      {e.time}
-                    </span>
+                    {(e.eps_est != null || e.eps_prior != null) && (
+                      <div className="flex gap-3 text-[8px] font-mono">
+                        {e.eps_est != null && <span className="text-muted-foreground">Est: <span className="text-foreground font-bold">${e.eps_est.toFixed(2)}</span></span>}
+                        {e.eps_prior != null && <span className="text-muted-foreground">Prior: <span className="text-foreground font-bold">${e.eps_prior.toFixed(2)}</span></span>}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex gap-3 text-[8px] font-mono">
-                    <span className="text-muted-foreground">EPS: <span className="text-foreground font-bold">{e.eps}</span></span>
-                    <span className="text-muted-foreground">Rev: <span className="text-foreground font-bold">{e.rev}</span></span>
-                    {e.surprise && <span className="text-positive font-bold">{e.surprise}</span>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </ToolSection>
         );

@@ -1,40 +1,64 @@
-// MOVR — Top gainers and losers (sample data).
+// MOVR — live top gainers & losers from the pre-market scanner.
+import { useState, useEffect } from 'react';
+import { apiGet } from '@/lib/api';
 import Sparkline from '@/components/tools/widgets/Sparkline';
 
-const GAINERS = [
-  { sym: 'NVDA', last: 870.50, pct: 4.82, spark: [820,830,825,840,855,860,870] },
-  { sym: 'COIN', last: 245.10, pct: 6.32, spark: [228,234,238,241,243,244,245] },
-  { sym: 'GME',  last: 18.20,  pct: 8.91, spark: [16.5,17.0,17.4,17.8,17.9,18.0,18.2] },
-  { sym: 'AMD',  last: 168.20, pct: 2.74, spark: [160,162,161,164,166,167,168] },
-  { sym: 'META', last: 502.10, pct: 0.71, spark: [498,499,500,501,500,501,502] },
-];
-const LOSERS = [
-  { sym: 'TSLA', last: 220.80, pct: -3.15, spark: [232,228,225,222,224,221,220] },
-  { sym: 'MARA', last: 22.15,  pct: -5.42, spark: [23.5,23.2,22.9,22.7,22.5,22.3,22.1] },
-  { sym: 'BA',   last: 178.40, pct: -2.10, spark: [184,182,181,180,179,178.5,178.4] },
-  { sym: 'XOM',  last: 110.20, pct: -1.85, spark: [113,112,111.5,111,110.8,110.5,110.2] },
-  { sym: 'AAPL', last: 195.30, pct: -0.18, spark: [196,195,196,195,195,195,195] },
-];
+type ScanRow = { sym: string; last: number; pct: number; vol: number; cat: string; spark: number[] };
 
-function Row({ r, neg }: { r: typeof GAINERS[number]; neg?: boolean }) {
-  const tone = neg ? 'text-negative' : 'text-positive';
+function Row({ r, neg }: { r: ScanRow; neg?: boolean }) {
   return (
-    <div className="flex items-center gap-2 h-5 px-1 border-b border-border/40">
+    <div className="flex items-center gap-2 h-5 px-1 border-b border-border/40 hover:bg-surface-elevated">
       <span className="text-[10px] font-mono font-bold text-foreground w-12">{r.sym}</span>
       <span className="text-[10px] font-mono tabular-nums text-foreground w-14 text-right">{r.last.toFixed(2)}</span>
       <Sparkline values={r.spark} tone={neg ? 'neg' : 'pos'} width={40} height={10} />
-      <span className={`ml-auto text-[10px] font-mono font-bold tabular-nums ${tone}`}>{r.pct >= 0 ? '+' : ''}{r.pct.toFixed(2)}%</span>
+      <span className={`ml-auto text-[10px] font-mono font-bold tabular-nums ${neg ? 'text-negative' : 'text-positive'}`}>
+        {r.pct >= 0 ? '+' : ''}{r.pct.toFixed(2)}%
+      </span>
     </div>
   );
 }
 
 export default function MoversTile() {
+  const [rows, setRows] = useState<ScanRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const data = await apiGet<{ rows?: ScanRow[] }>('/api/market/scanner/premarket');
+        if (!cancelled) { setRows(data?.rows ?? []); setLoading(false); }
+      } catch { if (!cancelled) setLoading(false); }
+    };
+    load();
+    const id = setInterval(load, 120_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  if (loading && rows.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center text-[9px] font-mono text-muted-foreground animate-pulse">
+        LOADING…
+      </div>
+    );
+  }
+
+  const gainers = rows.filter(r => r.pct > 0).slice(0, 5);
+  const losers  = rows.filter(r => r.pct < 0).slice(0, 5);
+
   return (
     <div className="h-full overflow-y-auto">
-      <div className="px-1 py-0.5 text-[8px] font-mono uppercase text-positive bg-positive/10">Top Gainers</div>
-      {GAINERS.map(r => <Row key={r.sym} r={r} />)}
+      <div className="px-1 py-0.5 text-[8px] font-mono uppercase text-positive bg-positive/10 flex justify-between">
+        <span>Top Gainers</span>
+        {loading && <span className="text-accent">···</span>}
+      </div>
+      {gainers.length > 0
+        ? gainers.map(r => <Row key={r.sym} r={r} />)
+        : <div className="px-2 py-1 text-[9px] font-mono text-muted-foreground italic">No movers · configure API key</div>}
       <div className="px-1 py-0.5 text-[8px] font-mono uppercase text-negative bg-negative/10 mt-1">Top Losers</div>
-      {LOSERS.map(r => <Row key={r.sym} r={r} neg />)}
+      {losers.length > 0
+        ? losers.map(r => <Row key={r.sym} r={r} neg />)
+        : <div className="px-2 py-1 text-[9px] font-mono text-muted-foreground italic">No movers · configure API key</div>}
     </div>
   );
 }

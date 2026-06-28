@@ -17,7 +17,36 @@ const FRED_SERIES: Record<string, { id: string; label: string; unit: string; tra
   two_year:       { id: 'DGS2', label: '2Y Treasury', unit: '%', transform: 'latest' },
   m2:             { id: 'M2SL', label: 'M2 YoY', unit: '%', transform: 'yoy_pct' },
   industrial_prod: { id: 'INDPRO', label: 'Industrial Prod YoY', unit: '%', transform: 'yoy_pct' },
-  retail_sales:   { id: 'RSAFS', label: 'Retail Sales YoY', unit: '%', transform: 'yoy_pct' },
+  retail_sales:   { id: 'RSAFS',        label: 'Retail Sales YoY',      unit: '%', transform: 'yoy_pct' },
+  ppi_yoy:        { id: 'PPIFGS',       label: 'PPI YoY',               unit: '%', transform: 'yoy_pct' },
+  core_ppi_yoy:   { id: 'WPUFD49116',   label: 'Core PPI YoY',          unit: '%', transform: 'yoy_pct' },
+  u6_rate:        { id: 'U6RATE',        label: 'U-6 Rate',              unit: '%', transform: 'latest' },
+  initial_claims: { id: 'ICSA',          label: 'Initial Claims',        unit: 'k', transform: 'latest' },
+  cont_claims:    { id: 'CCSA',          label: 'Continuing Claims',     unit: 'k', transform: 'latest' },
+  jolts_openings: { id: 'JTSJOL',        label: 'JOLTS Openings',        unit: 'k', transform: 'latest' },
+  jolts_hires:    { id: 'JTSHIR',        label: 'JOLTS Hires',           unit: 'k', transform: 'latest' },
+  jolts_quits:    { id: 'JTSQUR',        label: 'JOLTS Quits Rate',      unit: '%', transform: 'latest' },
+  avg_hourly_earn:{ id: 'CES0500000003', label: 'Avg Hourly Earnings',   unit: '%', transform: 'yoy_pct' },
+  ism_mfg_pmi:    { id: 'NAPM',          label: 'ISM Mfg PMI',           unit: '',  transform: 'latest' },
+  participation:  { id: 'CIVPART',        label: 'Labor Force Partic.',   unit: '%', transform: 'latest' },
+  cpi_shelter:    { id: 'CPIHOSSL',      label: 'Shelter YoY',           unit: '%', transform: 'yoy_pct' },
+  cpi_rent:       { id: 'CUSR0000SAH1',  label: 'Rent (Primary) YoY',    unit: '%', transform: 'yoy_pct' },
+  cpi_food:       { id: 'CPIFABSL',      label: 'Food & Bev YoY',        unit: '%', transform: 'yoy_pct' },
+  cpi_energy:     { id: 'CPIENGSL',      label: 'Energy YoY',            unit: '%', transform: 'yoy_pct' },
+  cpi_medical:    { id: 'CPIMEDSL',      label: 'Medical Care YoY',      unit: '%', transform: 'yoy_pct' },
+  cpi_transport:  { id: 'CPITRNSL',      label: 'Transportation YoY',    unit: '%', transform: 'yoy_pct' },
+  cpi_apparel:    { id: 'CPIAPPSL',      label: 'Apparel YoY',           unit: '%', transform: 'yoy_pct' },
+  cpi_services:   { id: 'CUSR0000SASLE', label: 'Services ex Energy YoY',unit: '%', transform: 'yoy_pct' },
+  breakeven_5y:   { id: 'T5YIE',         label: '5Y TIPS Breakeven',     unit: '%', transform: 'latest' },
+  breakeven_10y:  { id: 'T10YIE',        label: '10Y TIPS Breakeven',    unit: '%', transform: 'latest' },
+  epop_prime:     { id: 'LNS12300060',   label: 'Prime-Age EPOP (25-54)',unit: '%', transform: 'latest' },
+  avg_weekly_hrs: { id: 'AWHAEMP',       label: 'Avg Weekly Hours',      unit: 'hrs', transform: 'latest' },
+  nfp_mfg:        { id: 'MANEMP',        label: 'Mfg Employment',        unit: 'k',   transform: 'latest' },
+  gdp_deflator:   { id: 'GDPDEF',        label: 'GDP Price Deflator',    unit: '%',   transform: 'qoq_ann_pct' },
+  jolts_layoffs:  { id: 'JTSLAY',        label: 'JOLTS Layoffs Rate',    unit: '%',   transform: 'latest' },
+  ism_new_orders: { id: 'NAPMNOI',       label: 'ISM New Orders',        unit: '',    transform: 'latest' },
+  ism_prices:     { id: 'NAPMPI',        label: 'ISM Prices Paid',       unit: '',    transform: 'latest' },
+  ism_employment: { id: 'NAPMEI',        label: 'ISM Employment Index',  unit: '',    transform: 'latest' },
 };
 
 type Obs = { date: string; value: string };
@@ -82,6 +111,34 @@ router.get('/fred-indicators', async (_req, res) => {
     });
     fredCache = { ts: Date.now(), indicators };
     res.json({ indicators, ts: fredCache.ts, source: 'fred', cached: false });
+  } catch (e) { res.status(502).json({ error: String(e) }); }
+});
+
+// ─── FRED raw history (for charts) ───────────────────────────────────────────
+
+const fredHistCache = new Map<string, { ts: number; data: unknown }>();
+
+router.get('/fred-history', async (req, res) => {
+  const series = (req.query.series as string | undefined)?.toUpperCase();
+  const limit   = Math.min(120, Math.max(1, parseInt((req.query.limit as string) ?? '60', 10)));
+  if (!series) { res.status(400).json({ error: 'series required' }); return; }
+  const cacheKey = `${series}:${limit}`;
+  const cached = fredHistCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < FRED_TTL) { res.json(cached.data); return; }
+  const apiKey = process.env.FRED_API_KEY;
+  if (!apiKey) { res.json({ series, observations: [] }); return; }
+  try {
+    const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${series}&api_key=${apiKey}&file_type=json&sort_order=desc&limit=${limit}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`FRED ${series} ${r.status}`);
+    const json = await r.json() as any;
+    const observations = (json.observations ?? []).map((o: any) => ({
+      date: o.date as string,
+      value: o.value === '.' ? null : parseFloat(o.value),
+    }));
+    const data = { series, observations };
+    fredHistCache.set(cacheKey, { ts: Date.now(), data });
+    res.json(data);
   } catch (e) { res.status(502).json({ error: String(e) }); }
 });
 
@@ -280,11 +337,219 @@ router.get('/commodities', async (_req, res) => {
     const tdItems = Array.isArray(tdResults) ? fulfilled(tdResults) : (tdResults as any)?.value ? fulfilled((tdResults as any).value) : [];
     const fhItems = Array.isArray(fhResults) ? fulfilled(fhResults) : (fhResults as any)?.value ? fulfilled((fhResults as any).value) : [];
 
-    const commodities = [...tdItems, ...fhItems].filter(c => c.last != null);
+    const commodities = [...tdItems, ...fhItems].filter((c: any) => c.last != null);
     const data = { commodities, fetchedAt: Date.now() };
     commCache = { ts: Date.now(), data };
     res.json(data);
   } catch (e) { res.json({ commodities: [], fetchedAt: Date.now(), error: String(e) }); }
 });
+
+// ─── Net Liquidity Model (Fed BST − TGA − RRP) ───────────────────────────────
+
+let netliqCache: { ts: number; data: unknown } | null = null;
+const NETLIQ_TTL = 3600_000; // 1 hour — weekly FRED data
+
+const NETLIQ_SERIES: Record<string, { id: string; label: string }> = {
+  walcl:   { id: 'WALCL',      label: 'Fed Balance Sheet' },   // $B, weekly
+  tga:     { id: 'WDTGAL',     label: 'Treasury General Acct' }, // $B, weekly
+  rrp:     { id: 'RRPONTSYD',  label: 'ON-RRP Facility' },       // $B, daily
+  spx:     { id: 'SP500',      label: 'S&P 500' },               // weekly
+};
+
+router.get('/net-liquidity', async (_req, res) => {
+  if (netliqCache && Date.now() - netliqCache.ts < NETLIQ_TTL) {
+    res.json({ ...(netliqCache.data as Record<string, unknown>), cached: true }); return;
+  }
+  const apiKey = process.env.FRED_API_KEY;
+  if (!apiKey) {
+    // Return synthetic data so the UI works without a key
+    res.json({ synthetic: true, series: buildSyntheticNetLiq(), cached: false }); return;
+  }
+  try {
+    const fetchSeries = async (id: string, limit = 156) => {
+      const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${apiKey}&file_type=json&sort_order=asc&limit=${limit}`;
+      const r = await fetch(url, { headers: { 'User-Agent': 'trade-terminal/1.0' } });
+      if (!r.ok) throw new Error(`FRED ${id} ${r.status}`);
+      const j = await r.json() as { observations: { date: string; value: string }[] };
+      return j.observations.filter(o => o.value !== '.').map(o => ({ date: o.date, value: parseFloat(o.value) }));
+    };
+
+    const [walclObs, tgaObs, rrpObs, spxObs] = await Promise.all([
+      fetchSeries('WALCL', 156),
+      fetchSeries('WDTGAL', 156),
+      fetchSeries('RRPONTSYD', 520),  // daily, ~2 years
+      fetchSeries('SP500', 156),
+    ]);
+
+    // Align to weekly (use walcl dates as anchor)
+    const toMap = (obs: { date: string; value: number }[]) => {
+      const m: Record<string, number> = {};
+      obs.forEach(o => { m[o.date] = o.value; });
+      return m;
+    };
+    const tgaMap = toMap(tgaObs);
+    const rrpMap = toMap(rrpObs);
+    const spxMap = toMap(spxObs);
+
+    // For RRP (daily), find nearest weekly value
+    const rrpDates = rrpObs.map(o => o.date).sort();
+    const findLast = (arr: string[], pred: (d: string) => boolean) => {
+      for (let i = arr.length - 1; i >= 0; i--) { if (pred(arr[i])) return i; } return -1;
+    };
+    const nearestRRP = (date: string): number | null => {
+      const idx = findLast(rrpDates, d => d <= date);
+      return idx >= 0 ? rrpMap[rrpDates[idx]] ?? null : null;
+    };
+    const nearestSPX = (date: string): number | null => {
+      const dates = spxObs.map(o => o.date).sort();
+      const idx = findLast(dates, d => d <= date);
+      return idx >= 0 ? spxMap[dates[idx]] ?? null : null;
+    };
+
+    const series = walclObs.map(o => {
+      const walcl = o.value / 1000; // billions → trillions
+      const tga   = (tgaMap[o.date] ?? null);
+      const rrp   = nearestRRP(o.date);
+      const netliq = (tga != null && rrp != null) ? walcl - tga / 1000 - rrp / 1000 : null;
+      return {
+        date: o.date,
+        walcl: +walcl.toFixed(3),
+        tga:   tga != null ? +(tga / 1000).toFixed(3) : null,
+        rrp:   rrp != null ? +(rrp / 1000).toFixed(3) : null,
+        netliq: netliq != null ? +netliq.toFixed(3) : null,
+        spx:   nearestSPX(o.date),
+      };
+    }).filter(r => r.netliq != null);
+
+    const latest = series[series.length - 1] ?? null;
+    const prev   = series[series.length - 2] ?? null;
+    const data = {
+      series,
+      latest,
+      weeklyChange: latest && prev && latest.netliq != null && prev.netliq != null ? +(latest.netliq - prev.netliq).toFixed(3) : null,
+      synthetic: false,
+      fetchedAt: Date.now(),
+    };
+    netliqCache = { ts: Date.now(), data };
+    res.json({ ...data, cached: false });
+  } catch (e) {
+    res.json({ synthetic: true, series: buildSyntheticNetLiq(), error: String(e), cached: false });
+  }
+});
+
+function buildSyntheticNetLiq() {
+  const pts: { date: string; walcl: number; tga: number; rrp: number; netliq: number; spx: number }[] = [];
+  const start = new Date('2022-01-05');
+  let walcl = 8.9, tga = 0.45, rrp = 1.6, spx = 4700;
+  for (let i = 0; i < 130; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i * 7);
+    walcl += (Math.sin(i * 0.2) * 0.04) - 0.02;
+    tga   += (Math.random() - 0.5) * 0.08;
+    rrp   += i < 50 ? 0.04 : -0.06;
+    tga = Math.max(0.1, tga); rrp = Math.max(0, rrp);
+    const netliq = +( walcl - tga - rrp).toFixed(3);
+    spx += (netliq - (pts[i - 1]?.netliq ?? netliq)) * 200 + (Math.random() - 0.45) * 60;
+    pts.push({ date: d.toISOString().slice(0, 10), walcl: +walcl.toFixed(3), tga: +tga.toFixed(3), rrp: +rrp.toFixed(3), netliq, spx: Math.round(spx) });
+  }
+  return pts;
+}
+
+// ─── Squeeze scanner ─────────────────────────────────────────────────────────
+
+const squeezeCache = new Map<string, { ts: number; data: unknown }>();
+const SQUEEZE_TTL = 5 * 60_000;
+
+const SQUEEZE_UNIVERSE = ['SPY','QQQ','IWM','DIA','AAPL','NVDA','TSLA','META','AMZN','MSFT','GOOG','AMD','COIN','PLTR','MSTR','XLF','XLE','XLK','XLV','GLD','TLT','BTCUSD'];
+
+router.get('/squeeze', async (req, res) => {
+  const interval = (req.query.interval as string) || '1day';
+  const cacheKey = interval;
+  const hit = squeezeCache.get(cacheKey);
+  if (hit && Date.now() - hit.ts < SQUEEZE_TTL) { res.json({ ...(hit.data as Record<string, unknown>), cached: true }); return; }
+
+  const key = process.env.TWELVE_DATA_API_KEY;
+  if (!key) {
+    res.json({ rows: buildSyntheticSqueeze(interval), synthetic: true, cached: false }); return;
+  }
+
+  try {
+    const results = await Promise.allSettled(
+      SQUEEZE_UNIVERSE.map(async sym => {
+        const ts = await (await fetch(
+          `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(sym)}&interval=${interval}&outputsize=50&apikey=${key}`,
+          { headers: { 'User-Agent': 'trade-terminal/1.0' } }
+        )).json() as any;
+        const candles: { high: number; low: number; close: number }[] =
+          (ts.values ?? []).map((v: any) => ({ high: parseFloat(v.high), low: parseFloat(v.low), close: parseFloat(v.close) })).reverse();
+        return { sym, ...calcSqueeze(sym, candles) };
+      })
+    );
+    const rows = results.filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled').map(r => r.value);
+    const data = { rows, interval, fetchedAt: Date.now(), synthetic: false };
+    squeezeCache.set(cacheKey, { ts: Date.now(), data });
+    res.json({ ...data, cached: false });
+  } catch (e) {
+    res.json({ rows: buildSyntheticSqueeze(interval), synthetic: true, error: String(e), cached: false });
+  }
+});
+
+function calcSqueeze(sym: string, candles: { high: number; low: number; close: number }[]) {
+  if (candles.length < 20) return { squeeze: false, fired: false, momentum: 0, barsInSqueeze: 0, spark: [], close: null };
+  const closes = candles.map(c => c.close);
+  const highs  = candles.map(c => c.high);
+  const lows   = candles.map(c => c.low);
+  const n = closes.length;
+
+  // BB (20, 2)
+  const sma20 = closes.slice(-20).reduce((s, v) => s + v, 0) / 20;
+  const std20 = Math.sqrt(closes.slice(-20).reduce((s, v) => s + (v - sma20) ** 2, 0) / 20);
+  const bbUpper = sma20 + 2 * std20, bbLower = sma20 - 2 * std20;
+
+  // KC (20, 1.5 × ATR14)
+  const atr14 = closes.slice(-15).slice(1).reduce((s, c, i) => {
+    const h = highs[n - 14 + i] ?? c, l = lows[n - 14 + i] ?? c, pc = closes[n - 15 + i];
+    return s + Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+  }, 0) / 14;
+  const kcUpper = sma20 + 1.5 * atr14, kcLower = sma20 - 1.5 * atr14;
+
+  const squeeze = bbUpper < kcUpper && bbLower > kcLower;
+
+  // Momentum (delta midpoint regression vs sma20)
+  const mid20 = closes.slice(-20).map((c, i) => (highs[n - 20 + i] + lows[n - 20 + i]) / 2);
+  const midMean = mid20.reduce((s, v) => s + v, 0) / 20;
+  const momentum = closes[n - 1] - midMean;
+
+  // Count consecutive bars in squeeze
+  let barsInSqueeze = 0;
+  for (let i = n - 1; i >= 0; i--) {
+    const s20 = closes.slice(Math.max(0, i - 19), i + 1);
+    if (s20.length < 20) break;
+    const sm = s20.reduce((a, b) => a + b, 0) / 20;
+    const sd = Math.sqrt(s20.reduce((a, b) => a + (b - sm) ** 2, 0) / 20);
+    const atr = atr14; // approximate
+    if ((sm + 2 * sd) < (sm + 1.5 * atr) && (sm - 2 * sd) > (sm - 1.5 * atr)) barsInSqueeze++;
+    else break;
+  }
+
+  const fired = !squeeze && barsInSqueeze > 0;
+  const spark = closes.slice(-10).map(c => +c.toFixed(2));
+  return { squeeze, fired, barsInSqueeze, momentum: +momentum.toFixed(2), spark, close: closes[n - 1] };
+}
+
+function buildSyntheticSqueeze(interval: string) {
+  const hash = (s: string) => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+  const rng  = (seed: number) => { let a = seed; return () => { a = (a ^ (a << 13)) >>> 0; a = (a ^ (a >> 17)) >>> 0; a = (a ^ (a << 5)) >>> 0; return a / 0xffffffff; }; };
+  return SQUEEZE_UNIVERSE.map(sym => {
+    const r = rng(hash(sym + ':sqz:' + interval));
+    const squeeze  = r() < 0.35;
+    const fired    = !squeeze && r() < 0.25;
+    const barsInSqueeze = squeeze ? Math.floor(r() * 12) + 1 : fired ? Math.floor(r() * 3) + 1 : 0;
+    const momentum = +((r() - 0.48) * 6).toFixed(2);
+    const close    = +(100 + r() * 400).toFixed(2);
+    const spark    = Array.from({ length: 10 }, () => +(close * (0.96 + r() * 0.08)).toFixed(2));
+    return { sym, squeeze, fired, barsInSqueeze, momentum, spark, close };
+  });
+}
 
 export default router;

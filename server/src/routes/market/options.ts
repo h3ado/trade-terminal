@@ -37,6 +37,17 @@ const STRATEGY_PRESETS: Record<string, any[]> = {
   'iron-condor': [{ side: 'SHORT', type: 'PUT', strikeOffset: -10, dte: 30, qty: 1 }, { side: 'LONG', type: 'PUT', strikeOffset: -20, dte: 30, qty: 1 }, { side: 'SHORT', type: 'CALL', strikeOffset: 10, dte: 30, qty: 1 }, { side: 'LONG', type: 'CALL', strikeOffset: 20, dte: 30, qty: 1 }],
 };
 
+// ─── Options Snapshot (direct, no AI) ────────────────────────────────────────
+
+router.get('/snapshot/:ticker', (req, res) => {
+  const ticker = req.params.ticker.toUpperCase();
+  res.json({
+    iv: getIv(ticker),
+    gex: getGex(ticker),
+    regime: getRegime(ticker),
+  });
+});
+
 // ─── Options Copilot route ────────────────────────────────────────────────────
 
 const TOOLS = [

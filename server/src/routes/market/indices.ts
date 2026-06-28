@@ -2,58 +2,121 @@ import { Router } from 'express';
 
 const router = Router();
 
-// ─── Indices (mock with deterministic daily drift) ───────────────────────────
+const YF_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-const SYMBOLS = [
-  { abbr: 'NYSE', sym: 'SPX', base: 6650, mcap_usd_t: 50.0, vol: 0.6 },
-  { abbr: 'NDAQ', sym: 'NDX', base: 24500, mcap_usd_t: 25.0, vol: 0.8 },
-  { abbr: 'CME', sym: 'DJI', base: 47000, mcap_usd_t: 12.0, vol: 0.5 },
-  { abbr: 'LSE', sym: 'FTSE', base: 8400, mcap_usd_t: 3.5, vol: 0.5 },
-  { abbr: 'PAR', sym: 'CAC', base: 7800, mcap_usd_t: 3.0, vol: 0.6 },
-  { abbr: 'XETR', sym: 'DAX', base: 19500, mcap_usd_t: 2.5, vol: 0.7 },
-  { abbr: 'SIX', sym: 'SMI', base: 12200, mcap_usd_t: 1.8, vol: 0.4 },
-  { abbr: 'AMS', sym: 'AEX', base: 920, mcap_usd_t: 1.0, vol: 0.6 },
-  { abbr: 'BME', sym: 'IBEX', base: 11800, mcap_usd_t: 0.8, vol: 0.7 },
-  { abbr: 'BIT', sym: 'FTSEMIB', base: 35000, mcap_usd_t: 0.7, vol: 0.7 },
-  { abbr: 'TSE', sym: 'N225', base: 39500, mcap_usd_t: 6.0, vol: 0.8 },
-  { abbr: 'HKEX', sym: 'HSI', base: 19800, mcap_usd_t: 4.5, vol: 1.0 },
-  { abbr: 'SSE', sym: 'SSEC', base: 3200, mcap_usd_t: 7.0, vol: 0.7 },
-  { abbr: 'KRX', sym: 'KOSPI', base: 2600, mcap_usd_t: 1.7, vol: 0.7 },
-  { abbr: 'ASX', sym: 'AXJO', base: 8200, mcap_usd_t: 1.6, vol: 0.5 },
-  { abbr: 'TSX', sym: 'TSX', base: 24500, mcap_usd_t: 2.8, vol: 0.5 },
-  { abbr: 'BSE', sym: 'SENSEX', base: 80000, mcap_usd_t: 4.0, vol: 0.7 },
-  { abbr: 'B3', sym: 'BVSP', base: 130000, mcap_usd_t: 0.9, vol: 1.0 },
-  { abbr: 'BMV', sym: 'MXX', base: 56000, mcap_usd_t: 0.5, vol: 0.8 },
-  { abbr: 'JSE', sym: 'J203', base: 86000, mcap_usd_t: 1.0, vol: 0.7 },
+const INDEX_MAP = [
+  { abbr: 'NYSE',  sym: 'SPX',      yf: '^GSPC',      mcap_usd_t: 50.0 },
+  { abbr: 'NDAQ',  sym: 'NDX',      yf: '^IXIC',      mcap_usd_t: 25.0 },
+  { abbr: 'CME',   sym: 'DJI',      yf: '^DJI',       mcap_usd_t: 12.0 },
+  { abbr: 'LSE',   sym: 'FTSE',     yf: '^FTSE',      mcap_usd_t:  3.5 },
+  { abbr: 'PAR',   sym: 'CAC',      yf: '^FCHI',      mcap_usd_t:  3.0 },
+  { abbr: 'XETR',  sym: 'DAX',      yf: '^GDAXI',     mcap_usd_t:  2.5 },
+  { abbr: 'SIX',   sym: 'SMI',      yf: '^SSMI',      mcap_usd_t:  1.8 },
+  { abbr: 'AMS',   sym: 'AEX',      yf: '^AEX',       mcap_usd_t:  1.0 },
+  { abbr: 'BME',   sym: 'IBEX',     yf: '^IBEX35',    mcap_usd_t:  0.8 },
+  { abbr: 'BIT',   sym: 'FTSEMIB',  yf: 'FTSEMIB.MI', mcap_usd_t:  0.7 },
+  { abbr: 'TSE',   sym: 'N225',     yf: '^N225',      mcap_usd_t:  6.0 },
+  { abbr: 'HKEX',  sym: 'HSI',      yf: '^HSI',       mcap_usd_t:  4.5 },
+  { abbr: 'SSE',   sym: 'SSEC',     yf: '000001.SS',  mcap_usd_t:  7.0 },
+  { abbr: 'KRX',   sym: 'KOSPI',    yf: '^KS11',      mcap_usd_t:  1.7 },
+  { abbr: 'ASX',   sym: 'AXJO',     yf: '^AXJO',      mcap_usd_t:  1.6 },
+  { abbr: 'TSX',   sym: 'TSX',      yf: '^GSPTSE',    mcap_usd_t:  2.8 },
+  { abbr: 'BSE',   sym: 'SENSEX',   yf: '^BSESN',     mcap_usd_t:  4.0 },
+  { abbr: 'B3',    sym: 'BVSP',     yf: '^BVSP',      mcap_usd_t:  0.9 },
+  { abbr: 'BMV',   sym: 'MXX',      yf: '^MXX',       mcap_usd_t:  0.5 },
+  { abbr: 'JSE',   sym: 'J203',     yf: '^J203.JO',   mcap_usd_t:  1.0 },
 ];
 
-function seededRandom(seed: number) {
+// ─── Seeded fallback (correct field names, deterministic by day) ──────────────
+
+const SEED_BASES: Record<string, { base: number; vol: number }> = {
+  '^GSPC':      { base: 6650,   vol: 0.6 },
+  '^IXIC':      { base: 24500,  vol: 0.8 },
+  '^DJI':       { base: 47000,  vol: 0.5 },
+  '^FTSE':      { base: 8400,   vol: 0.5 },
+  '^FCHI':      { base: 7800,   vol: 0.6 },
+  '^GDAXI':     { base: 19500,  vol: 0.7 },
+  '^SSMI':      { base: 12200,  vol: 0.4 },
+  '^AEX':       { base: 920,    vol: 0.6 },
+  '^IBEX35':    { base: 11800,  vol: 0.7 },
+  'FTSEMIB.MI': { base: 35000,  vol: 0.7 },
+  '^N225':      { base: 39500,  vol: 0.8 },
+  '^HSI':       { base: 19800,  vol: 1.0 },
+  '000001.SS':  { base: 3200,   vol: 0.7 },
+  '^KS11':      { base: 2600,   vol: 0.7 },
+  '^AXJO':      { base: 8200,   vol: 0.5 },
+  '^GSPTSE':    { base: 24500,  vol: 0.5 },
+  '^BSESN':     { base: 80000,  vol: 0.7 },
+  '^BVSP':      { base: 130000, vol: 1.0 },
+  '^MXX':       { base: 56000,  vol: 0.8 },
+  '^J203.JO':   { base: 86000,  vol: 0.7 },
+};
+
+function seededRng(seed: number) {
   let s = seed;
-  return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
+  return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
 }
 
-function getIndexValue(base: number, vol: number): { value: number; changePct: number } {
+function seededIndex(yf: string) {
+  const { base, vol } = SEED_BASES[yf] ?? { base: 1000, vol: 0.5 };
   const day = Math.floor(Date.now() / 86400_000);
-  const r = seededRandom(day * 997 + base);
-  const dailyChange = (r() - 0.49) * vol * 2;
-  return {
-    value: +(base * (1 + dailyChange / 100)).toFixed(0),
-    changePct: +dailyChange.toFixed(2),
-  };
+  const rng = seededRng(day * 997 + base);
+  const change_pct = +((rng() - 0.49) * vol * 2).toFixed(2);
+  const close = +(base * (1 + change_pct / 100)).toFixed(0);
+  const prev_close = +(close / (1 + change_pct / 100)).toFixed(0);
+  return { close, prev_close, change_pct };
 }
+
+// ─── Yahoo Finance batch quote ─────────────────────────────────────────────────
+
+async function fetchYFBatch(): Promise<Map<string, any>> {
+  const symbols = INDEX_MAP.map(i => i.yf).join(',');
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}&fields=regularMarketPrice,regularMarketPreviousClose,regularMarketChangePercent,shortName`;
+  const r = await fetch(url, {
+    headers: { 'User-Agent': YF_UA, Accept: 'application/json', Referer: 'https://finance.yahoo.com/' },
+  });
+  if (!r.ok) throw new Error(`Yahoo Finance v7 ${r.status}`);
+  const j = await r.json() as any;
+  const results: any[] = j?.quoteResponse?.result ?? [];
+  return new Map<string, any>(results.map((q: any) => [q.symbol, q]));
+}
+
+// ─── Index cache ──────────────────────────────────────────────────────────────
 
 let indicesCache: { ts: number; data: unknown } | null = null;
-const INDICES_TTL = 30_000;
+const INDICES_TTL = 2 * 60_000;
 
-router.get('/indices', (_req, res) => {
+router.get('/indices', async (_req, res) => {
   if (indicesCache && Date.now() - indicesCache.ts < INDICES_TTL) {
     res.json(indicesCache.data); return;
   }
-  const indices = SYMBOLS.map(s => {
-    const { value, changePct } = getIndexValue(s.base, s.vol);
-    return { ...s, value, changePct };
+
+  let quoteMap = new Map<string, any>();
+  let source = 'seeded';
+  try {
+    quoteMap = await fetchYFBatch();
+    source = 'yahoo';
+  } catch (e) {
+    console.warn('[indices] YF batch failed, using seeded:', String(e));
+  }
+
+  const indices = INDEX_MAP.map(({ abbr, sym, yf, mcap_usd_t }) => {
+    const q = quoteMap.get(yf);
+    if (q?.regularMarketPrice != null) {
+      return {
+        abbr,
+        symbol: sym,
+        close: q.regularMarketPrice as number,
+        prev_close: (q.regularMarketPreviousClose ?? null) as number | null,
+        change_pct: (q.regularMarketChangePercent ?? null) as number | null,
+        mcap_usd_t,
+        movers: [],
+      };
+    }
+    return { abbr, symbol: sym, ...seededIndex(yf), mcap_usd_t, movers: [] };
   });
-  const data = { indices, ts: Date.now() };
+
+  const data = { indices, ts: Date.now(), source };
   indicesCache = { ts: Date.now(), data };
   res.json(data);
 });

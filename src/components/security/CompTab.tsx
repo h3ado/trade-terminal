@@ -43,13 +43,27 @@ const METRICS: MetricDef[] = [
   { label: 'ROE',           key: 'returnOnEquity', fmt: fmtPct, higherIsBetter: true },
 ];
 
+interface CurrentData {
+  name: string;
+  marketCap: number | null;
+  price: number | null;
+  changePct: number | null;
+  trailingPE: number | null;
+  forwardPE: number | null;
+  pegRatio: number | null;
+  revenueGrowth: number | null;
+  profitMargins: number | null;
+  returnOnEquity: number | null;
+}
+
 interface Props {
   ticker: string;
   peers: PeerRow[] | null;
   loading: boolean;
+  currentData?: CurrentData | null;
 }
 
-export default function CompTab({ ticker, peers, loading }: Props) {
+export default function CompTab({ ticker, peers, loading, currentData }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground text-[10px] animate-pulse font-mono">
@@ -67,9 +81,11 @@ export default function CompTab({ ticker, peers, loading }: Props) {
 
   const allTickers = [ticker, ...peers.map(p => p.ticker)];
 
-  // For each metric, find min/max across peers to highlight best/worst
+  // For each metric, find min/max across all rows (current + peers) to highlight best/worst
   const getBounds = (key: keyof PeerRow) => {
-    const vals = peers.map(p => p[key] as number | null).filter((v): v is number => v != null && isFinite(v));
+    const peerVals = peers.map(p => p[key] as number | null).filter((v): v is number => v != null && isFinite(v));
+    const curVal = currentData ? (currentData as any)[key] as number | null : null;
+    const vals = curVal != null && isFinite(curVal) ? [curVal, ...peerVals] : peerVals;
     if (vals.length === 0) return { min: null, max: null };
     return { min: Math.min(...vals), max: Math.max(...vals) };
   };
@@ -99,7 +115,7 @@ export default function CompTab({ ticker, peers, loading }: Props) {
             <tr className="border-b border-border/40">
               <td className="py-0.5 pr-4 text-[9px] text-muted-foreground/50">Company</td>
               <td className="py-0.5 px-2 text-right text-[9px] text-muted-foreground bg-accent/5 truncate max-w-[100px]">
-                —
+                {currentData?.name?.split(' ').slice(0, 2).join(' ') ?? '—'}
               </td>
               {peers.map(p => (
                 <td key={p.ticker} className="py-0.5 px-2 text-right text-[9px] text-muted-foreground truncate max-w-[100px]">
@@ -114,9 +130,8 @@ export default function CompTab({ ticker, peers, loading }: Props) {
               return (
                 <tr key={metric.key} className="border-b border-border/30 hover:bg-surface-elevated">
                   <td className="py-0.5 pr-4 text-[9px] text-muted-foreground">{metric.label}</td>
-                  {/* Current ticker — no highlighting (we don't have its data here) */}
                   <td className="py-0.5 px-2 text-right text-[10px] font-semibold tabular-nums bg-accent/5 text-foreground">
-                    —
+                    {currentData ? metric.fmt((currentData as any)[metric.key]) : '—'}
                   </td>
                   {peers.map(p => {
                     const raw = p[metric.key] as number | null;
@@ -141,7 +156,7 @@ export default function CompTab({ ticker, peers, loading }: Props) {
         </table>
       </div>
       <p className="mt-3 text-[9px] text-muted-foreground">
-        Green = best in peer group for that metric · Red = worst · Current ticker column shows live data on GP tab
+        Green = best in peer group for that metric · Red = worst
       </p>
     </div>
   );

@@ -1,27 +1,70 @@
-// INDX — Index futures snapshot (sample data).
+// INDX — live index futures via batch-quotes (Yahoo Finance futures notation).
+import { useState, useEffect } from 'react';
+import { apiGet } from '@/lib/api';
 import Sparkline from '@/components/tools/widgets/Sparkline';
 
-const FUT = [
-  { sym: 'ES',  name: 'S&P 500',     last: 5240.25, pct: 0.34, spark: [5215,5220,5218,5225,5230,5235,5240] },
-  { sym: 'NQ',  name: 'Nasdaq 100',  last: 18420.5, pct: 0.78, spark: [18280,18310,18290,18340,18380,18400,18420] },
-  { sym: 'YM',  name: 'Dow',         last: 39150,   pct: -0.12, spark: [39200,39190,39180,39170,39160,39155,39150] },
-  { sym: 'RTY', name: 'Russell 2K',  last: 2085.4,  pct: 0.91, spark: [2065,2070,2068,2074,2078,2082,2085] },
-  { sym: 'CL',  name: 'WTI Crude',   last: 78.45,   pct: -1.22, spark: [79.4,79.2,79.0,78.8,78.7,78.5,78.45] },
-  { sym: 'GC',  name: 'Gold',        last: 2342.8,  pct: 0.42, spark: [2330,2333,2331,2335,2338,2340,2342] },
+const FUTURES = [
+  { sym: 'ES=F',  disp: 'ES',  name: 'S&P 500' },
+  { sym: 'NQ=F',  disp: 'NQ',  name: 'Nasdaq 100' },
+  { sym: 'YM=F',  disp: 'YM',  name: 'Dow' },
+  { sym: 'RTY=F', disp: 'RTY', name: 'Russell 2K' },
+  { sym: 'CL=F',  disp: 'CL',  name: 'WTI Crude' },
+  { sym: 'GC=F',  disp: 'GC',  name: 'Gold' },
 ];
 
+type Quote = { ticker: string; price: number | null; prevClose: number | null; changePct: number | null };
+
+function makeSpark(prev: number | null, cur: number | null): number[] {
+  if (prev == null || cur == null) return [0, 0, 0, 0, 0, 0, 0];
+  return [0, 0.15, 0.3, 0.5, 0.65, 0.8, 1].map(t => prev + (cur - prev) * t);
+}
+
+const SYMS = FUTURES.map(f => f.sym).join(',');
+
 export default function IndexFuturesTile() {
+  const [quotes, setQuotes] = useState<Record<string, Quote>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const data = await apiGet<{ quotes?: Quote[] }>(`/api/market/security/batch-quotes?symbols=${SYMS}`);
+        if (!cancelled) {
+          const map: Record<string, Quote> = {};
+          for (const q of data?.quotes ?? []) map[q.ticker] = q;
+          setQuotes(map);
+          setLoading(false);
+        }
+      } catch { if (!cancelled) setLoading(false); }
+    };
+    load();
+    const id = setInterval(load, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
   return (
     <div className="h-full overflow-y-auto">
-      {FUT.map(f => {
-        const tone = f.pct >= 0 ? 'text-positive' : 'text-negative';
+      {loading && Object.keys(quotes).length === 0 && (
+        <div className="flex items-center justify-center h-8 text-[9px] font-mono text-muted-foreground animate-pulse">LOADING…</div>
+      )}
+      {FUTURES.map(f => {
+        const q = quotes[f.sym];
+        const pct = q?.changePct ?? 0;
+        const price = q?.price;
+        const spark = makeSpark(q?.prevClose ?? null, price ?? null);
+        const tone = pct >= 0 ? 'text-positive' : 'text-negative';
         return (
-          <div key={f.sym} className="flex items-center gap-2 h-6 px-1 border-b border-border/40">
-            <span className="text-[10px] font-mono font-bold text-accent w-8">{f.sym}</span>
+          <div key={f.sym} className="flex items-center gap-2 h-6 px-1 border-b border-border/40 hover:bg-surface-elevated">
+            <span className="text-[10px] font-mono font-bold text-accent w-8">{f.disp}</span>
             <span className="text-[9px] font-mono uppercase text-muted-foreground w-16 truncate">{f.name}</span>
-            <span className="text-[10px] font-mono tabular-nums text-foreground w-16 text-right">{f.last.toLocaleString()}</span>
-            <Sparkline values={f.spark} width={40} height={12} />
-            <span className={`ml-auto text-[10px] font-mono font-bold tabular-nums ${tone}`}>{f.pct >= 0 ? '+' : ''}{f.pct.toFixed(2)}%</span>
+            <span className="text-[10px] font-mono tabular-nums text-foreground w-16 text-right">
+              {price != null ? price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+            </span>
+            <Sparkline values={spark} width={40} height={12} />
+            <span className={`ml-auto text-[10px] font-mono font-bold tabular-nums ${tone}`}>
+              {pct >= 0 ? '+' : ''}{pct.toFixed(2)}%
+            </span>
           </div>
         );
       })}
