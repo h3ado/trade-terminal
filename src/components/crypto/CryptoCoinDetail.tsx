@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { apiGet } from '@/lib/api';
+import CryptoPriceChart from './CryptoPriceChart';
 
 interface CoinDetail {
   id: string; symbol: string; name: string; image: string; description: string;
@@ -189,15 +190,12 @@ export default function CryptoCoinDetail({ coinId: cid, title, extra }: Props) {
       {/* ── Three-column main grid (no scroll) ── */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
 
-        {/* LEFT: Sparkline + Supply/ATH */}
+        {/* LEFT: Price chart + Supply/ATH */}
         <div className="w-[28%] shrink-0 border-r border-border flex flex-col min-h-0">
 
-          {/* Sparkline */}
+          {/* Interactive price chart */}
           <div className="flex-[3] min-h-0 border-b border-border flex flex-col">
-            <Ph label="7-Day Price" right="Sparkline" />
-            <div className="flex-1 min-h-0 p-2">
-              <Sparkline7d prices={data.sparkline7d} />
-            </div>
+            <CryptoPriceChart coinId={cid} symbol={data.symbol ?? cid.toUpperCase()} />
           </div>
 
           {/* Supply & ATH */}

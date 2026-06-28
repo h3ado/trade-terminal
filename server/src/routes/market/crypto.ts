@@ -10,10 +10,13 @@ function makeCache<T>(ttlMs: number) {
   };
 }
 
-const fearGreedCache = makeCache<unknown>(30 * 60_000);
-const defiCache      = makeCache<unknown>(15 * 60_000);
-const coinCache      = makeCache<unknown>(5  * 60_000);
-const derivCache     = makeCache<unknown>(5  * 60_000);
+const fearGreedCache  = makeCache<unknown>(30 * 60_000);
+const defiCache       = makeCache<unknown>(15 * 60_000);
+const coinCache       = makeCache<unknown>(5  * 60_000);
+const derivCache      = makeCache<unknown>(5  * 60_000);
+const l2TvlCache      = makeCache<unknown>(60 * 60_000);
+const fundingCache    = makeCache<unknown>(5  * 60_000);
+const ohlcCache       = makeCache<unknown>(5  * 60_000);
 
 // ─── Fear & Greed Index ───────────────────────────────────────────────────────
 
@@ -21,7 +24,7 @@ router.get('/fear-greed', async (_req, res) => {
   const hit = fearGreedCache.get('fg');
   if (hit) { res.json(hit); return; }
   try {
-    const r = await fetch('https://api.alternative.me/fng/?limit=10', {
+    const r = await fetch('https://api.alternative.me/fng/?limit=30', {
       headers: { 'User-Agent': 'trade-terminal/1.0' },
       signal: AbortSignal.timeout(8000),
     });
@@ -29,7 +32,7 @@ router.get('/fear-greed', async (_req, res) => {
     const j = await r.json() as any;
     const data = {
       current: j.data?.[0] ?? null,
-      history: (j.data ?? []).slice(0, 10),
+      history: (j.data ?? []).slice(0, 30),
       fetchedAt: Date.now(),
     };
     fearGreedCache.set('fg', data);
@@ -192,6 +195,135 @@ router.get('/derivatives', async (_req, res) => {
     derivCache.set('deriv', data);
     res.json(data);
   } catch (e) { res.json({ exchanges: [], fetchedAt: Date.now(), error: String(e) }); }
+});
+
+// ─── L2 TVL (DeFiLlama chains, no auth) ──────────────────────────────────────
+
+const L2_CHAINS = ['Arbitrum', 'Optimism', 'Base', 'zkSync Era', 'Polygon zkEVM', 'Starknet', 'Linea', 'Scroll'];
+
+router.get('/l2-tvl', async (_req, res) => {
+  const hit = l2TvlCache.get('l2');
+  if (hit) { res.json(hit); return; }
+  try {
+    const r = await fetch('https://api.llama.fi/v2/chains', {
+      headers: { 'User-Agent': 'trade-terminal/1.0' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) throw new Error(`DeFiLlama ${r.status}`);
+    const j = await r.json() as any[];
+    const l2s = j
+      .filter((c: any) => L2_CHAINS.includes(c.name))
+      .map((c: any) => ({
+        name: c.name,
+        tvl: c.tvl ?? 0,
+        chainId: c.chainId ?? null,
+      }))
+      .sort((a: any, b: any) => {
+        const ia = L2_CHAINS.indexOf(a.name);
+        const ib = L2_CHAINS.indexOf(b.name);
+        return ia - ib;
+      });
+    const data = { chains: l2s, fetchedAt: Date.now() };
+    l2TvlCache.set('l2', data);
+    res.json(data);
+  } catch (e) { res.json({ chains: [], fetchedAt: Date.now(), error: String(e) }); }
+});
+
+// ─── Funding Rates (Binance + Bybit public REST, no auth) ─────────────────────
+
+const FUNDING_PAIRS = [
+  { pair: 'BTC-PERP',  binance: 'BTCUSDT',  bybit: 'BTCUSDT' },
+  { pair: 'ETH-PERP',  binance: 'ETHUSDT',  bybit: 'ETHUSDT' },
+  { pair: 'SOL-PERP',  binance: 'SOLUSDT',  bybit: 'SOLUSDT' },
+  { pair: 'XRP-PERP',  binance: 'XRPUSDT',  bybit: 'XRPUSDT' },
+  { pair: 'DOGE-PERP', binance: 'DOGEUSDT', bybit: 'DOGEUSDT' },
+  { pair: 'BNB-PERP',  binance: 'BNBUSDT',  bybit: null },
+];
+
+router.get('/funding-rates', async (_req, res) => {
+  const hit = fundingCache.get('fr');
+  if (hit) { res.json(hit); return; }
+  try {
+    // Fetch Binance premium index (includes funding rate + next funding time)
+    const binanceSymbols = FUNDING_PAIRS.map(p => p.binance).join(',');
+    const [binR, bybitR] = await Promise.allSettled([
+      fetch(`https://fapi.binance.com/fapi/v1/premiumIndex`, {
+        signal: AbortSignal.timeout(8000),
+      }),
+      fetch(`https://api.bybit.com/v5/market/tickers?category=linear`, {
+        signal: AbortSignal.timeout(8000),
+      }),
+    ]);
+
+    const binanceMap: Record<string, number> = {};
+    if (binR.status === 'fulfilled' && binR.value.ok) {
+      const bj = await binR.value.json() as any[];
+      for (const item of bj) {
+        binanceMap[item.symbol] = parseFloat(item.lastFundingRate ?? '0') * 100;
+      }
+    }
+
+    const bybitMap: Record<string, number> = {};
+    if (bybitR.status === 'fulfilled' && bybitR.value.ok) {
+      const yj = await bybitR.value.json() as any;
+      for (const item of (yj.result?.list ?? [])) {
+        if (item.fundingRate != null) {
+          bybitMap[item.symbol] = parseFloat(item.fundingRate) * 100;
+        }
+      }
+    }
+
+    const rows = FUNDING_PAIRS.flatMap(p => {
+      const results = [];
+      const binRate = binanceMap[p.binance];
+      if (binRate !== undefined) {
+        results.push({ pair: p.pair, ex: 'Binance', rate: +binRate.toFixed(4), synthetic: false });
+      }
+      if (p.bybit) {
+        const bRate = bybitMap[p.bybit];
+        if (bRate !== undefined) {
+          results.push({ pair: p.pair, ex: 'Bybit', rate: +bRate.toFixed(4), synthetic: false });
+        }
+      }
+      return results;
+    });
+
+    // If we got nothing real, return synthetic with flag
+    const synthetic = rows.length === 0;
+    const fallback = [
+      { pair: 'BTC-PERP', ex: 'Binance', rate: 0.0082, synthetic: true },
+      { pair: 'ETH-PERP', ex: 'Binance', rate: 0.0065, synthetic: true },
+      { pair: 'SOL-PERP', ex: 'Binance', rate: 0.0120, synthetic: true },
+    ];
+
+    const data = { rows: synthetic ? fallback : rows, synthetic, fetchedAt: Date.now() };
+    fundingCache.set('fr', data);
+    res.json(data);
+  } catch (e) { res.json({ rows: [], synthetic: true, fetchedAt: Date.now(), error: String(e) }); }
+});
+
+// ─── OHLC candles (CoinGecko free) ───────────────────────────────────────────
+
+router.get('/coin/:id/ohlc', async (req, res) => {
+  const id = req.params.id.toLowerCase();
+  const days = req.query.days ?? '30';
+  const key = `${id}-${days}`;
+  const hit = ohlcCache.get(key);
+  if (hit) { res.json(hit); return; }
+  try {
+    const url = `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/ohlc?vs_currency=usd&days=${days}`;
+    const r = await fetch(url, {
+      headers: { 'User-Agent': 'trade-terminal/1.0', Accept: 'application/json' },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!r.ok) throw new Error(`CoinGecko OHLC ${r.status}`);
+    const j = await r.json() as [number, number, number, number, number][];
+    // CoinGecko returns [timestamp, open, high, low, close]
+    const candles = j.map(([t, o, h, l, c]) => ({ t, o, h, l, c }));
+    const data = { candles, fetchedAt: Date.now() };
+    ohlcCache.set(key, data);
+    res.json(data);
+  } catch (e) { res.json({ candles: [], fetchedAt: Date.now(), error: String(e) }); }
 });
 
 export default router;

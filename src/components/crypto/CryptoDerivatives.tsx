@@ -9,21 +9,9 @@ interface Exchange {
   numberOfPerpetualPairs: number | null;
   numberOfFuturesPairs: number | null;
 }
+interface FundingRow { pair: string; ex: string; rate: number; synthetic: boolean }
 interface DerivData { exchanges: Exchange[]; }
-
-// Deterministic mock funding rates (no free real-time endpoint without auth)
-const FUNDING = [
-  { pair: 'BTC-PERP',  ex: 'Binance',  rate: 0.0082, oi: 8.4e9  },
-  { pair: 'ETH-PERP',  ex: 'Binance',  rate: 0.0065, oi: 3.1e9  },
-  { pair: 'BTC-PERP',  ex: 'Bybit',    rate: 0.0091, oi: 5.2e9  },
-  { pair: 'ETH-PERP',  ex: 'Bybit',    rate: 0.0071, oi: 2.0e9  },
-  { pair: 'BTC-PERP',  ex: 'OKX',      rate: -0.0031, oi: 3.8e9 },
-  { pair: 'ETH-PERP',  ex: 'OKX',      rate: -0.0018, oi: 1.5e9 },
-  { pair: 'SOL-PERP',  ex: 'Binance',  rate: 0.0120, oi: 0.9e9  },
-  { pair: 'XRP-PERP',  ex: 'Binance',  rate: 0.0043, oi: 0.4e9  },
-  { pair: 'DOGE-PERP', ex: 'Binance',  rate: 0.0155, oi: 0.3e9  },
-  { pair: 'BNB-PERP',  ex: 'Binance',  rate: 0.0102, oi: 0.5e9  },
-];
+interface FundingData { rows: FundingRow[]; synthetic: boolean }
 
 function fmtBig(n: number | null) {
   if (n == null) return '—';
@@ -34,14 +22,22 @@ function fmtBig(n: number | null) {
 
 export default function CryptoDerivatives() {
   const [data, setData] = useState<DerivData | null>(null);
+  const [funding, setFunding] = useState<FundingData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const d = await apiGet<DerivData>('/api/market/crypto/derivatives');
+      const [d, f] = await Promise.all([
+        apiGet<DerivData>('/api/market/crypto/derivatives'),
+        apiGet<FundingData>('/api/market/crypto/funding-rates'),
+      ]);
       setData(d);
-    } catch { setData({ exchanges: [] }); }
+      setFunding(f);
+    } catch {
+      setData({ exchanges: [] });
+      setFunding({ rows: [], synthetic: true });
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -64,8 +60,14 @@ export default function CryptoDerivatives() {
         <div className="flex-1 min-h-0 flex overflow-hidden">
           {/* Left: Funding rates */}
           <div className="flex-1 min-w-0 border-r border-border flex flex-col">
-            <div className="px-2 py-1 border-b border-border/60 bg-surface-elevated shrink-0">
+            <div className="px-2 py-1 border-b border-border/60 bg-surface-elevated shrink-0 flex items-center gap-2">
               <span className="text-[8px] text-accent font-bold uppercase tracking-widest">Perpetual Funding Rates (8h)</span>
+              {funding?.synthetic && (
+                <span className="text-[7px] text-orange-400 border border-orange-400/40 px-1">SYNTHETIC</span>
+              )}
+              {funding && !funding.synthetic && (
+                <span className="text-[7px] text-positive border border-positive/40 px-1">LIVE</span>
+              )}
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto">
               <table className="w-full text-[9px]">
@@ -75,31 +77,29 @@ export default function CryptoDerivatives() {
                     <th className="text-left px-2 py-1 text-[8px] text-muted-foreground font-normal">Exchange</th>
                     <th className="text-right px-2 py-1 text-[8px] text-muted-foreground font-normal">Funding Rate</th>
                     <th className="text-right px-2 py-1 text-[8px] text-muted-foreground font-normal">Annualized</th>
-                    <th className="text-right px-2 py-1 text-[8px] text-muted-foreground font-normal">Open Interest</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {FUNDING.map((f, i) => {
-                    const annualized = f.rate * 3 * 365; // 3 × daily (8h period)
+                  {(funding?.rows ?? []).map((f, i) => {
+                    const annualized = f.rate * 3 * 365;
                     const isPos = f.rate >= 0;
                     return (
                       <tr key={i} className="border-b border-border/20 hover:bg-surface-elevated">
                         <td className="px-2 py-1 font-semibold text-foreground">{f.pair}</td>
                         <td className="px-2 py-1 text-accent">{f.ex}</td>
                         <td className={`px-2 py-1 text-right tabular-nums font-bold ${isPos ? 'text-positive' : 'text-negative'}`}>
-                          {isPos ? '+' : ''}{(f.rate).toFixed(4)}%
+                          {isPos ? '+' : ''}{f.rate.toFixed(4)}%
                         </td>
                         <td className={`px-2 py-1 text-right tabular-nums ${isPos ? 'text-positive' : 'text-negative'}`}>
                           {isPos ? '+' : ''}{(annualized * 100).toFixed(1)}%
                         </td>
-                        <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">${fmtBig(f.oi)}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
               <p className="px-2 pb-2 pt-1 text-[8px] text-muted-foreground">
-                Positive rate = longs pay shorts · Negative = shorts pay longs
+                Positive rate = longs pay shorts · Negative = shorts pay longs · Sources: Binance, Bybit
               </p>
             </div>
           </div>

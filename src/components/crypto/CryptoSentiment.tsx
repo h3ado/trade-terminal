@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { apiGet } from '@/lib/api';
 
 interface FGEntry { value: string; value_classification: string; timestamp: string; time_until_update?: string }
@@ -155,37 +156,69 @@ export default function CryptoSentiment() {
             </div>
           </div>
 
-          {/* RIGHT: History table */}
+          {/* RIGHT: 30-day chart + condensed history */}
           <div className="flex-1 min-w-0 flex flex-col min-h-0">
-            <Ph label="10-Day History" />
+
+            {/* 30-day area chart */}
+            <Ph label="30-Day Trend" right="Alternative.me" />
+            <div className="h-[110px] shrink-0 border-b border-border px-1 py-1">
+              {(data?.history ?? []).length > 0 && (() => {
+                const chartData = [...(data?.history ?? [])].reverse().map(h => ({
+                  date: fmtTs(h.timestamp),
+                  value: parseInt(h.value),
+                  fill: parseInt(h.value) < 25 ? '#d63333'
+                      : parseInt(h.value) < 45 ? '#f97316'
+                      : parseInt(h.value) < 55 ? '#737373'
+                      : parseInt(h.value) < 75 ? '#22c55e'
+                      : '#38a838',
+                }));
+                return (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="fg-gradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%"  stopColor="hsl(var(--accent))" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="date" tick={{ fontSize: 7, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} interval="preserveStartEnd" />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 7, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} />
+                      <ReferenceLine y={25} stroke="#d63333" strokeDasharray="2 2" strokeWidth={0.7} />
+                      <ReferenceLine y={45} stroke="#737373" strokeDasharray="2 2" strokeWidth={0.7} />
+                      <ReferenceLine y={55} stroke="#737373" strokeDasharray="2 2" strokeWidth={0.7} />
+                      <ReferenceLine y={75} stroke="#38a838" strokeDasharray="2 2" strokeWidth={0.7} />
+                      <Tooltip
+                        contentStyle={{ background: 'hsl(var(--surface-elevated))', border: '1px solid hsl(var(--border))', borderRadius: 0, fontSize: 9, padding: '3px 6px' }}
+                        formatter={(v: number) => [v, 'Score']}
+                        labelStyle={{ color: 'hsl(var(--muted-foreground))', fontSize: 8 }}
+                      />
+                      <Area type="monotone" dataKey="value" stroke="hsl(var(--accent))" strokeWidth={1} fill="url(#fg-gradient)" dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </div>
+
+            {/* Condensed 10-row history table */}
+            <Ph label="Recent History" />
             <div className="flex-1 min-h-0 overflow-y-auto">
               <table className="w-full text-[9px]">
                 <thead className="sticky top-0 bg-surface-deep">
                   <tr className="border-b border-border">
                     <th className="text-left px-2 py-1 text-[8px] text-muted-foreground font-normal">Date</th>
                     <th className="text-center px-2 py-1 text-[8px] text-muted-foreground font-normal">Score</th>
-                    <th className="w-4 px-2 py-1" />
                     <th className="text-right px-2 py-1 text-[8px] text-muted-foreground font-normal">Classification</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(data?.history ?? []).map((h, i) => {
+                  {(data?.history ?? []).slice(0, 14).map((h, i) => {
                     const v = parseInt(h.value);
-                    const barPct = v;
                     const col = classColor(h.value_classification);
                     return (
                       <tr key={i} className="border-b border-border/20 hover:bg-surface-elevated">
                         <td className="px-2 py-1 text-muted-foreground tabular-nums">{fmtTs(h.timestamp)}</td>
                         <td className="px-2 py-1 text-center">
                           <span className={`text-[11px] font-bold tabular-nums ${col}`}>{v}</span>
-                        </td>
-                        <td className="px-1 py-1 w-16">
-                          <div className="h-1.5 bg-surface-elevated">
-                            <div
-                              className={`h-full ${v < 25 ? 'bg-negative' : v < 45 ? 'bg-orange-400' : v < 55 ? 'bg-muted-foreground' : v < 75 ? 'bg-green-500' : 'bg-positive'}`}
-                              style={{ width: `${barPct}%` }}
-                            />
-                          </div>
                         </td>
                         <td className={`px-2 py-1 text-right font-semibold text-[8px] ${col}`}>
                           {h.value_classification}
@@ -202,10 +235,9 @@ export default function CryptoSentiment() {
               <Ph label="Market Context" />
               <div className="px-2 py-1 space-y-0">
                 {[
-                  { l: 'Reading below 20', v: 'Historically strong buy signal' },
-                  { l: 'Reading above 80', v: 'Consider taking profits' },
-                  { l: 'Update frequency', v: 'Daily (midnight UTC)' },
-                  { l: 'Inputs',           v: 'Volatility, Momentum, Social, Dominance, Trends' },
+                  { l: 'Below 20', v: 'Historically strong buy signal' },
+                  { l: 'Above 80', v: 'Consider taking profits' },
+                  { l: 'Inputs',   v: 'Volatility · Momentum · Social · Dominance' },
                 ].map(r => (
                   <div key={r.l} className="flex gap-2 justify-between py-[2px] border-b border-border/20">
                     <span className="text-[7px] text-muted-foreground shrink-0">{r.l}</span>
