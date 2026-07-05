@@ -23,7 +23,7 @@ const BAND: Record<Key['band'], string> = {
 };
 
 const KEYS: Key[] = [
-  { fn: 'F1',  code: '',      label: 'HELP',  band: 'yellow' },
+  { fn: 'F1',  code: 'HELP',  label: 'HELP',  band: 'yellow' },
   { fn: 'F2',  code: 'WB',    label: 'GOVT',  band: 'yellow' },
   { fn: 'F3',  code: 'OPT',   label: 'CORP',  band: 'green' },
   { fn: 'F4',  code: 'MIST',  label: 'MTGE',  band: 'red' },
@@ -44,16 +44,19 @@ interface Props {
 export default function FunctionKeyBar({ onLaunchpad }: Props) {
   const fire = (code: string) => {
     if (!code) return;
+    if (code === 'HELP') {
+      window.dispatchEvent(new CustomEvent('lovable:help-open'));
+      return;
+    }
     window.dispatchEvent(new CustomEvent('lovable:cli-execute', { detail: { code } }));
   };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // Only F2-F12 (avoid hijacking F1 which is browser help)
       const m = /^F(\d{1,2})$/.exec(e.key);
       if (!m) return;
       const n = parseInt(m[1], 10);
-      if (n < 2 || n > 12) return;
+      if (n < 1 || n > 12) return;
       const k = KEYS.find(x => x.fn === e.key);
       if (k?.code) {
         e.preventDefault();
@@ -70,11 +73,8 @@ export default function FunctionKeyBar({ onLaunchpad }: Props) {
         <button
           key={k.fn}
           onClick={() => fire(k.code)}
-          disabled={!k.code}
-          className={`flex-1 px-1 flex items-center justify-center gap-1 transition-opacity ${
-            k.code ? BAND[k.band] + ' hover:opacity-80' : 'bg-surface-elevated text-muted-foreground cursor-not-allowed opacity-60'
-          }`}
-          title={k.code ? `${k.fn} → ${k.code}` : `${k.fn} (unassigned)`}
+          className={`flex-1 px-1 flex items-center justify-center gap-1 transition-opacity ${BAND[k.band]} hover:opacity-80`}
+          title={`${k.fn} → ${k.code}`}
         >
           <span className="opacity-70">{k.fn}</span>
           <span>{k.label}</span>

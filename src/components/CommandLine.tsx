@@ -66,11 +66,48 @@ export const COMMANDS: CommandDef[] = [
   { code: 'WEIF', label: 'World Equity Index Futures',action: 'navigate', view: 'macro', macroTab: 'weif', skipCountry: true },
   { code: 'WPE',  label: 'World P/E & Valuations',    action: 'navigate', view: 'macro', macroTab: 'wpe',  skipCountry: true },
   { code: 'WB',   label: 'World Sovereign Yields Monitor', action: 'navigate', view: 'mwb',   skipCountry: true },
+  { code: 'YCRV', label: 'Yield Curve — Spreads, Tenors, Inversion', action: 'navigate', view: 'yc', skipCountry: true },
+  { code: 'YC',   label: 'Yield Curve (alias YCRV)',      action: 'navigate', view: 'yc',   skipCountry: true },
+  { code: 'WXTR', label: 'Weather Intelligence Terminal', action: 'navigate', view: 'wxtr', skipCountry: true },
+  { code: 'WX',   label: 'Weather Terminal (alias WXTR)', action: 'navigate', view: 'wxtr', skipCountry: true },
   { code: 'GLCO', label: 'Global Commodities Monitor',     action: 'navigate', view: 'mglco', skipCountry: true },
   { code: 'TOP',    label: 'Top News Firehose Monitor',      action: 'navigate', view: 'mtop',    skipCountry: true },
   { code: 'MINT',   label: 'Market Internals (TICK/TRIN/Breadth)', action: 'navigate', view: 'mint',   skipCountry: true },
   { code: 'NETLIQ', label: 'Net Liquidity Model (Fed BST−TGA−RRP)', action: 'navigate', view: 'mnetliq', skipCountry: true },
   { code: 'SQZZ',  label: 'Squeeze Scanner (TTM Squeeze)',  action: 'navigate', view: 'msqzz',  skipCountry: true },
+  { code: 'HEAT',  label: 'Sector Heatmap — S&P 500 Sectors by % Change',           action: 'navigate', view: 'heat',  skipCountry: true },
+  { code: 'VOLT',  label: 'Volatility Surface — IV Term Structure & Smile',          action: 'navigate', view: 'volt',  skipCountry: true },
+  { code: 'SENT',  label: 'Market Sentiment — Fear & Greed / Put-Call / AAII',       action: 'navigate', view: 'sent',  skipCountry: true },
+  { code: 'CRDT',  label: 'Credit Markets — IG/HY Spreads, CDS, Conditions',         action: 'navigate', view: 'crdt',  skipCountry: true },
+  { code: 'FUTS',  label: 'Futures Curve — Contango/Backwardation Term Structure',   action: 'navigate', view: 'futs',  skipCountry: true },
+  { code: 'CURV',  label: 'Futures Curve (alias FUTS)',     action: 'navigate', view: 'futs',  skipCountry: true },
+  { code: 'SHORT', label: 'Short Interest Monitor — SI%, DTC, Borrow Fee, Squeeze', action: 'navigate', view: 'short', skipCountry: true },
+  { code: 'SI',    label: 'Short Interest (alias SHORT)',   action: 'navigate', view: 'short', skipCountry: true },
+  { code: 'FORM4', label: 'Insider Trading Feed — SEC Form 4 Buys/Sells/Clusters', action: 'navigate', view: 'form4', skipCountry: true },
+  { code: 'INSD',  label: 'Insider Feed (alias FORM4)',     action: 'navigate', view: 'form4', skipCountry: true },
+  { code: 'ETFF',  label: 'ETF Flow Monitor — Creations & Redemptions', action: 'navigate', view: 'etff', skipCountry: true },
+  { code: 'ETFL',  label: 'ETF Flows (alias ETFF)',         action: 'navigate', view: 'etff', skipCountry: true },
+  { code: 'CHAIN', label: 'Crypto On-Chain Monitor — MVRV/NUPL/SOPR/NVT/Mempool', action: 'navigate', view: 'chain', skipCountry: true },
+  { code: 'OCHN',  label: 'On-Chain (alias CHAIN)',         action: 'navigate', view: 'chain', skipCountry: true },
+  { code: 'PORT',  label: 'Portfolio Risk Analyzer — Sharpe/Sortino/VaR/Correlation', action: 'navigate', view: 'port', skipCountry: true },
+  { code: 'RISK',  label: 'Portfolio Risk (alias PORT)',    action: 'navigate', view: 'port', skipCountry: true },
+  { code: 'CHART', label: 'Chart Workstation — CHART {TICKER} for any symbol', action: 'function', skipCountry: true },
+  { code: 'G',     label: 'Quick Chart — G {TICKER} (alias CHART)', action: 'function', skipCountry: true },
+  { code: 'INDX',  label: 'Market Indicators — Breadth/Momentum/Correlation/Participation', action: 'navigate', view: 'indx', skipCountry: true },
+  { code: 'BRDTH', label: 'Market Breadth (alias INDX)', action: 'navigate', view: 'indx', skipCountry: true },
+  { code: 'MKTIND',label: 'Market Indicators (alias INDX)', action: 'navigate', view: 'indx', skipCountry: true },
+  { code: 'RSCH',   label: 'AI Research Assistant — ask market questions', action: 'function', skipCountry: true },
+  { code: 'AIDE',   label: 'AI Research (alias RSCH)', action: 'function', skipCountry: true },
+  { code: 'SCRN',   label: 'Stock Screener — filter by sector/P/E/RSI/SI%', action: 'navigate', view: 'scrn', skipCountry: true },
+  { code: 'SCREEN', label: 'Stock Screener (alias SCRN)', action: 'navigate', view: 'scrn', skipCountry: true },
+  { code: 'ALRT',   label: 'Alert Manager — price & condition alerts', action: 'function', skipCountry: true },
+  { code: 'ALERT',  label: 'Alert Manager (alias ALRT)', action: 'function', skipCountry: true },
+  { code: 'CORP',   label: 'Corporate Actions — dividends, splits, buybacks', action: 'navigate', view: 'corp', skipCountry: true },
+  { code: 'DIVS',   label: 'Dividends (alias CORP)', action: 'navigate', view: 'corp', skipCountry: true },
+  { code: 'SURP',   label: 'Economic Surprise Index — actual vs consensus', action: 'navigate', view: 'surp', skipCountry: true },
+  { code: 'ESURP',  label: 'Economic Surprise (alias SURP)', action: 'navigate', view: 'surp', skipCountry: true },
+  { code: 'DPFLO',  label: 'Dark Pool Flow Monitor — block prints & sweeps', action: 'function', skipCountry: true },
+  { code: 'DARK',   label: 'Dark Pool (alias DPFLO)', action: 'function', skipCountry: true },
   { code: 'ROTN',  label: 'Sector Rotation (RRG)',          action: 'navigate', view: 'mrotn',  skipCountry: true },
   { code: 'ATTR',  label: 'P&L Attribution (Clock/Grade/Hold/Sector)', action: 'navigate', view: 'attr',  skipCountry: true },
   { code: 'POSIZ', label: 'Position Sizer (Kelly/Fixed/% Risk)',        action: 'navigate', view: 'posiz', skipCountry: true },
@@ -158,6 +195,9 @@ export default function CommandLine({ onNavigate, onAddTrade, onTogglePrivacy, o
   const [showHelp, setShowHelp] = useState(false);
   const [pendingCmd, setPendingCmd] = useState<CommandDef | null>(null);
   const [countryFilter, setCountryFilter] = useState('');
+  const [cmdHistory, setCmdHistory] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('bb-cmd-history') || '[]'); } catch { return []; }
+  });
   const inputRef = useRef<HTMLInputElement>(null);
   const { selectedCountry, setSelectedCountry, countryInfo } = useMacroCountry();
 
@@ -183,7 +223,8 @@ export default function CommandLine({ onNavigate, onAddTrade, onTogglePrivacy, o
       )
     : [];
 
-  const showDropdown = focused && (filtered.length > 0 || showHelp || pendingCmd);
+  const showHistory = focused && !value.trim() && !pendingCmd && !showHelp && cmdHistory.length > 0;
+  const showDropdown = (focused && (filtered.length > 0 || showHelp || pendingCmd)) || showHistory;
 
   const finalize = useCallback((cmd: CommandDef, country?: MacroCountry) => {
     if (country) setSelectedCountry(country);
@@ -211,6 +252,13 @@ export default function CommandLine({ onNavigate, onAddTrade, onTogglePrivacy, o
 
   const execute = useCallback((cmd: CommandDef, rawOverride?: string) => {
     const raw = rawOverride ?? value;
+    if (!['HELP', 'BACK', 'FWD'].includes(cmd.code)) {
+      setCmdHistory(prev => {
+        const next = [cmd.code, ...prev.filter(h => h !== cmd.code)].slice(0, 15);
+        try { localStorage.setItem('bb-cmd-history', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    }
     if (cmd.code === 'HELP') {
       setShowHelp(true);
       setValue('');
@@ -342,10 +390,10 @@ export default function CommandLine({ onNavigate, onAddTrade, onTogglePrivacy, o
         else if (/^[A-Z]{1,6}$/.test(t)) earnTicker = t;
       }
       const earnFilter = { window: win ?? 'week', session, minImportance, ticker: earnTicker };
-      window.dispatchEvent(new CustomEvent('lovable:options-args', {
-        detail: { tab: 'earn', ticker: earnTicker ?? 'AAPL', sub: 'play', earnFilter },
+      window.dispatchEvent(new CustomEvent('lovable:earn-args', {
+        detail: { ticker: earnTicker ?? 'AAPL', filter: earnFilter },
       }));
-      onNavigate('options');
+      onNavigate('earn');
       setValue(''); setShowHelp(false); inputRef.current?.blur();
       return;
     }
@@ -392,6 +440,40 @@ export default function CommandLine({ onNavigate, onAddTrade, onTogglePrivacy, o
       const mapped = OPTIONS_CODES[cmd.code];
       window.dispatchEvent(new CustomEvent('lovable:options-args', { detail: { tab: mapped.tab, sub: mapped.sub, ticker } }));
       onNavigate('options');
+      setValue(''); setShowHelp(false); inputRef.current?.blur();
+      return;
+    }
+    if (cmd.code === 'CHART' || cmd.code === 'G') {
+      const tokens = raw.trim().toUpperCase().split(/\s+/).slice(1);
+      const ticker = tokens.find(t => /^[A-Z]{1,6}$/.test(t)) ?? 'AAPL';
+      window.dispatchEvent(new CustomEvent('lovable:chart-args', { detail: { ticker } }));
+      onNavigate('chart');
+      setValue(''); setShowHelp(false); inputRef.current?.blur();
+      return;
+    }
+    if (cmd.code === 'RSCH' || cmd.code === 'AIDE') {
+      const tokens = raw.trim().toUpperCase().split(/\s+/).slice(1);
+      const ticker = tokens.find(t => /^[A-Z]{1,6}$/.test(t));
+      const query = tokens.filter(t => !/^[A-Z]{1,6}$/.test(t)).join(' ').toLowerCase();
+      window.dispatchEvent(new CustomEvent('lovable:rsch-args', { detail: { ticker, query } }));
+      onNavigate('rsch');
+      setValue(''); setShowHelp(false); inputRef.current?.blur();
+      return;
+    }
+    if (cmd.code === 'ALRT' || cmd.code === 'ALERT') {
+      const tokens = raw.trim().toUpperCase().split(/\s+/).slice(1);
+      const ticker = tokens.find(t => /^[A-Z]{1,6}$/.test(t));
+      const price = tokens.find(t => /^\d+(\.\d+)?$/.test(t));
+      window.dispatchEvent(new CustomEvent('lovable:alrt-args', { detail: { ticker, price: price ? parseFloat(price) : undefined } }));
+      onNavigate('alrt');
+      setValue(''); setShowHelp(false); inputRef.current?.blur();
+      return;
+    }
+    if (cmd.code === 'DPFLO' || cmd.code === 'DARK') {
+      const tokens = raw.trim().toUpperCase().split(/\s+/).slice(1);
+      const ticker = tokens.find(t => /^[A-Z]{1,6}$/.test(t));
+      window.dispatchEvent(new CustomEvent('lovable:dpflo-args', { detail: { ticker } }));
+      onNavigate('dpflo');
       setValue(''); setShowHelp(false); inputRef.current?.blur();
       return;
     }
@@ -542,7 +624,35 @@ export default function CommandLine({ onNavigate, onAddTrade, onTogglePrivacy, o
 
       {showDropdown && (
         <div className="absolute top-full left-0 mt-0.5 w-64 bg-card border border-accent/30 shadow-lg z-[100] max-h-72 overflow-y-auto animate-scale-in origin-top-left">
-          {pendingCmd ? (
+          {showHistory ? (
+            <>
+              <div className="px-2 py-1 border-b border-accent/20 bg-surface-elevated flex items-center justify-between">
+                <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">Recent Commands</span>
+                <button
+                  onMouseDown={(e) => { e.preventDefault(); setCmdHistory([]); try { localStorage.removeItem('bb-cmd-history'); } catch {} }}
+                  className="text-[8px] text-muted-foreground hover:text-foreground"
+                >CLR</button>
+              </div>
+              {cmdHistory.slice(0, 8).map((code, i) => {
+                const cmd = COMMANDS.find(c => c.code === code);
+                return (
+                  <button
+                    key={`hist-${code}-${i}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const found = COMMANDS.find(c => c.code === code);
+                      if (found) execute(found);
+                    }}
+                    className="w-full px-2 py-1.5 flex items-center gap-2 text-left hover:bg-surface-elevated transition-colors"
+                  >
+                    <span className="text-[9px] text-muted-foreground shrink-0">↵</span>
+                    <span className="text-[11px] font-mono font-bold w-12 text-accent">{code}</span>
+                    <span className="text-[10px] font-mono text-muted-foreground truncate">{cmd?.label ?? ''}</span>
+                  </button>
+                );
+              })}
+            </>
+          ) : pendingCmd ? (
             <>
               <div className="px-2 py-1 border-b border-accent/20 bg-surface-elevated flex items-center gap-2">
                 <span className="text-[9px] font-mono text-accent uppercase font-bold">{pendingCmd.code}</span>

@@ -218,6 +218,18 @@ const trendData: Record<string, { month: string; gdp: number; cpi: number; unemp
 
 const getCountryTrend = (code: string) => trendData[code] || trendData['US'];
 
+const fire = (code: string) =>
+  window.dispatchEvent(new CustomEvent('lovable:cli-execute', { detail: { code } }));
+
+// Map indicator codes to CLI navigation targets
+const CODE_NAV: Record<string, string> = {
+  GDP: 'GDP', CPI: 'CPI', CCPI: 'CPI', PCE: 'PCE', CPCE: 'PCE',
+  UNEMP: 'UNEMP', NFP: 'NFP', ISMM: 'ISM', ISMS: 'ISM',
+  IJCL: 'UNEMP', PROD: 'GDP', ULC: 'GDP',
+  FFRT: 'FED', M2MS: 'FED', BDEF: 'FED',
+  BOJR: 'FED', ECBR: 'FED', BOER: 'FED', SNBR: 'FED', RBIR: 'FED', BNXR: 'FED',
+};
+
 export default function EconOverview() {
   const { selectedCountry, countryInfo } = useMacroCountry();
   const { toggleRow, isExpanded } = useExpandableRows();
@@ -240,7 +252,7 @@ export default function EconOverview() {
       </div>
 
       {/* Mini trend chart */}
-      <div className="border border-border bg-surface-primary p-3">
+      <div className="border-b border-border pb-3">
         <div className="text-[10px] font-mono text-muted-foreground mb-2">Key Macro Trends — GDP / CPI / Unemployment</div>
         <ExpandableResponsiveContainer width="100%" height={160}>
           <LineChart data={trend}>
@@ -255,7 +267,7 @@ export default function EconOverview() {
         </ExpandableResponsiveContainer>
       </div>
 
-      <div className="border border-border overflow-hidden">
+      <div className="overflow-hidden">
         <table className="w-full text-[10px] font-mono">
           <thead>
             <tr className="bg-surface-elevated border-b border-border">
@@ -288,7 +300,15 @@ export default function EconOverview() {
                       <td className="px-1 py-1 w-5">
                         <ExpandIcon isExpanded={expanded} />
                       </td>
-                      <td className="px-2 py-1 text-accent font-bold">{ind.code}</td>
+                      <td className="px-2 py-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); fire(CODE_NAV[ind.code] || 'ECST'); }}
+                          className="text-accent font-bold hover:text-accent/60 transition-colors"
+                          title={`Open ${ind.code} deep dive`}
+                        >
+                          {ind.code}
+                        </button>
+                      </td>
                       <td className="px-2 py-1 text-foreground">{ind.name}</td>
                       <td className="px-2 py-1 text-right font-bold text-foreground">{ind.value}</td>
                       <td className="px-2 py-1 text-right text-muted-foreground">{ind.prev}</td>

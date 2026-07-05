@@ -137,10 +137,10 @@ function OptionsViewInner({ initialTab = 'dash', initialTicker = 'SPY', initialS
     switch (tab) {
       case 'dash':
         return (
-          <div className="space-y-3">
+          <div className="space-y-0">
             <DashKpiStrip ticker={ticker} redact={privacyMode} />
             <MarketStatsStrip ticker={ticker} redact={privacyMode} />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
               <GexProfileChart ticker={ticker} redact={privacyMode} />
               <VolatilitySurface ticker={ticker} redact={privacyMode} />
               <IntradayGexChart ticker={ticker} redact={privacyMode} />

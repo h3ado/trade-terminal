@@ -240,6 +240,10 @@
   color: hsl(0, 0%, 0%);
 }
 
+/* ── TickerBar price flash animations ── */
+@keyframes flash-up   { 0%,100% { background: transparent; } 50% { background: hsl(var(--positive) / 0.22); } }
+@keyframes flash-down { 0%,100% { background: transparent; } 50% { background: hsl(var(--negative) / 0.22); } }
+
 /* ── Options Insight Engine compatibility shims ── */
 .bg-gradient-terminal { background: hsl(var(--background)); }
 .card-terminal {

@@ -36,6 +36,11 @@ import OptionsView from '@/components/views/OptionsView';
 import CommandPalette from '@/components/CommandPalette';
 import EconCalendarOverlay from '@/components/calendar/EconCalendarOverlay';
 import BloombergFKeyBar from '@/components/terminal/BloombergFKeyBar';
+import TickerBar from '@/components/terminal/TickerBar';
+import NewsRibbon from '@/components/terminal/NewsRibbon';
+import StatusRibbon from '@/components/terminal/StatusRibbon';
+import ViewContext from '@/components/terminal/ViewContext';
+import HelpOverlay from '@/components/terminal/HelpOverlay';
 import Launchpad from '@/components/launchpad/Launchpad';
 import SecurityView from '@/components/views/SecurityView';
 import WEIMonitor from '@/components/monitors/WEIMonitor';
@@ -50,7 +55,29 @@ import SectorRotation from '@/components/macro/SectorRotation';
 import AttributionView from '@/components/views/AttributionView';
 import PositionSizerView from '@/components/views/PositionSizerView';
 import OverviewView from '@/components/views/OverviewView';
+import YieldCurveView from '@/components/views/YieldCurveView';
+import EarningsView from '@/components/views/EarningsView';
+import WeatherView from '@/components/views/WeatherView';
+import FuturesCurveView from '@/components/views/FuturesCurveView';
+import ShortInterestView from '@/components/views/ShortInterestView';
+import InsiderFeedView from '@/components/views/InsiderFeedView';
+import ETFFlowView from '@/components/views/ETFFlowView';
+import SectorHeatmap from '@/components/macro/SectorHeatmap';
+import VolatilitySurface from '@/components/macro/VolatilitySurface';
+import Sentiment from '@/components/macro/Sentiment';
+import CreditMarkets from '@/components/macro/CreditMarkets';
+import OnChainView from '@/components/views/OnChainView';
+import PortfolioRiskView from '@/components/views/PortfolioRiskView';
+import ChartView from '@/components/views/ChartView';
+import MarketIndicatorsView from '@/components/views/MarketIndicatorsView';
+import EconSurpriseView from '@/components/views/EconSurpriseView';
+import CorporateActionsView from '@/components/views/CorporateActionsView';
+import DarkPoolView from '@/components/views/DarkPoolView';
+import AlertManagerView from '@/components/views/AlertManagerView';
+import ScreenerView from '@/components/views/ScreenerView';
+import ResearchView from '@/components/views/ResearchView';
 import { useNavHistory } from '@/hooks/useNavHistory';
+import type { EarnFilter } from '@/hooks/useEarningsCalendar';
 import type { NewsScope } from '@/hooks/useGdeltNews';
 
 const VIEW_LABELS: Record<ViewType, string> = {
@@ -107,6 +134,27 @@ const VIEW_LABELS: Record<ViewType, string> = {
   mpce:   'PCE · Fed Inflation',
   mjolts: 'JOLTS · Job Openings',
   mism:   'ISM · Manufacturing PMI',
+  yc:     'YCRV · Yield Curve',
+  earn:   'EARN · Earnings Terminal',
+  wxtr:   'WXTR · Weather Intelligence Terminal',
+  futs:   'FUTS · Futures Curve Monitor',
+  short:  'SHORT · Short Interest Monitor',
+  form4:  'FORM4 · Insider Trading Feed',
+  etff:   'ETFF · ETF Flow Monitor',
+  heat:   'HEAT · Sector Heatmap',
+  volt:   'VOLT · Volatility Surface',
+  sent:   'SENT · Market Sentiment',
+  crdt:   'CRDT · Credit Markets',
+  chain:  'CHAIN · Crypto On-Chain Monitor',
+  port:   'PORT · Portfolio Risk Analyzer',
+  chart:  'CHART · Chart Workstation',
+  indx:   'INDX · Market Indicators Dashboard',
+  rsch:   'RSCH · AI Market Research Assistant',
+  scrn:   'SCRN · Stock Screener',
+  alrt:   'ALRT · Alert Manager',
+  corp:   'CORP · Corporate Actions',
+  surp:   'SURP · Economic Surprise Index',
+  dpflo:  'DPFLO · Dark Pool Flow Monitor',
 };
 
 const TRADING_VIEWS: ViewType[] = ['dashboard', 'trades', 'analytics', 'calendar', 'performance', 'journal', 'playbooks', 'mistakes', 'goals'];
@@ -137,6 +185,7 @@ function IndexInner() {
   const [activeView, setActiveView] = useState<ViewType>('launchpad');
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showHelpOverlay, setShowHelpOverlay] = useState(false);
   const [toolsWidth, setToolsWidth] = useState(320);
   const [macroTab, setMacroTab] = useState<MacroTab>('overview');
   const [fxTab, setFxTab] = useState<FxTab>('home');
@@ -144,6 +193,11 @@ function IndexInner() {
   const [securityTicker, setSecurityTicker] = useState<string>('AAPL');
   const [newsArgs, setNewsArgs] = useState<{ scope: NewsScope; value: string; ai: boolean; topic?: string; pinOnly?: boolean; sort?: 'recent' | 'velocity'; source?: 'all' | 'x' | 'potus' | 'fed'; rightPane?: 'detail' | 'map' | 'heat' }>({ scope: 'global', value: '', ai: false });
   const [optionsArgs, setOptionsArgs] = useState<{ tab: OptionsTab; ticker: string; sub?: string; earnFilter?: import('@/hooks/useEarningsCalendar').EarnFilter }>({ tab: 'dash', ticker: 'SPY' });
+  const [earnArgs, setEarnArgs] = useState<{ ticker: string; filter?: EarnFilter }>({ ticker: 'AAPL' });
+  const [chartTicker, setChartTicker] = useState('AAPL');
+  const [rschArgs, setRschArgs] = useState<{ ticker?: string; query?: string }>({});
+  const [alrtArgs, setAlrtArgs] = useState<{ ticker?: string; price?: number }>({});
+  const [dpfloTicker, setDpfloTicker] = useState<string | undefined>(undefined);
   const [progressKey, setProgressKey] = useState(0);
   const resizingRef = useRef(false);
   const startXRef = useRef(0);
@@ -259,6 +313,57 @@ function IndexInner() {
     return () => window.removeEventListener('lovable:security-args', handler);
   }, []);
 
+  useEffect(() => {
+    const handler = () => setShowHelpOverlay(true);
+    window.addEventListener('lovable:help-open', handler);
+    return () => window.removeEventListener('lovable:help-open', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail as { ticker?: string; filter?: EarnFilter } | undefined;
+      setEarnArgs({ ticker: (d?.ticker ?? 'AAPL').toUpperCase(), filter: d?.filter });
+    };
+    window.addEventListener('lovable:earn-args', handler);
+    return () => window.removeEventListener('lovable:earn-args', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail as { ticker?: string } | undefined;
+      if (d?.ticker) setChartTicker(d.ticker.toUpperCase());
+    };
+    window.addEventListener('lovable:chart-args', handler);
+    return () => window.removeEventListener('lovable:chart-args', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail as { ticker?: string; query?: string } | undefined;
+      setRschArgs({ ticker: d?.ticker, query: d?.query });
+    };
+    window.addEventListener('lovable:rsch-args', handler);
+    return () => window.removeEventListener('lovable:rsch-args', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail as { ticker?: string; price?: number } | undefined;
+      setAlrtArgs({ ticker: d?.ticker, price: d?.price });
+    };
+    window.addEventListener('lovable:alrt-args', handler);
+    return () => window.removeEventListener('lovable:alrt-args', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail as { ticker?: string } | undefined;
+      setDpfloTicker(d?.ticker);
+    };
+    window.addEventListener('lovable:dpflo-args', handler);
+    return () => window.removeEventListener('lovable:dpflo-args', handler);
+  }, []);
+
   const renderView = () => {
     switch (activeView) {
       case 'dashboard': return <DashboardView />;
@@ -314,6 +419,21 @@ function IndexInner() {
       case 'mpce':    return <PCE />;
       case 'mjolts':  return <JOLTS />;
       case 'mism':    return <ISM />;
+      case 'yc':      return <YieldCurveView />;
+      case 'earn':    return <EarningsView initialTicker={earnArgs.ticker} initialFilter={earnArgs.filter} />;
+      case 'wxtr':    return <WeatherView />;
+      case 'futs':    return <FuturesCurveView />;
+      case 'short':   return <ShortInterestView />;
+      case 'form4':   return <InsiderFeedView />;
+      case 'etff':    return <ETFFlowView />;
+      case 'heat':    return <SectorHeatmap />;
+      case 'volt':    return <VolatilitySurface />;
+      case 'sent':    return <Sentiment />;
+      case 'crdt':    return <CreditMarkets />;
+      case 'chain':   return <OnChainView />;
+      case 'port':    return <PortfolioRiskView />;
+      case 'chart':   return <ChartView initialTicker={chartTicker} />;
+      case 'indx':    return <MarketIndicatorsView />;
       default: return <Launchpad />;
     }
   };
@@ -331,6 +451,7 @@ function IndexInner() {
         onBack={nav.back}
         onForward={nav.forward}
       />
+      <TickerBar />
       <div className="flex-1 flex overflow-hidden">
         {!toolsCollapsed && (
           <div
@@ -356,8 +477,9 @@ function IndexInner() {
           </div>
         )}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <ViewContext activeView={activeView} />
           {(() => {
-            const fullBleed = ['globe','cot','news','forex','crypto','journal','quiz','launchpad','options','security','over','mwei','mwb','mglco','mtop','meco','mecst','mecfc','mecwb','mstat','mectr','mcoun','moecd','meiu','mfed','mfomc','mffip','mcenb','msrsk','mwlst','mint','mnetliq','msqzz','mrotn','attr','posiz','mcpi','mppi','munemp','mnfp','mgdp','mpce','mjolts','mism'];
+            const fullBleed = ['globe','cot','news','forex','crypto','journal','quiz','launchpad','options','security','over','mwei','mwb','mglco','mtop','meco','mecst','mecfc','mecwb','mstat','mectr','mcoun','moecd','meiu','mfed','mfomc','mffip','mcenb','msrsk','mwlst','mint','mnetliq','msqzz','mrotn','attr','posiz','mcpi','mppi','munemp','mnfp','mgdp','mpce','mjolts','mism','yc','earn','wxtr','futs','short','form4','etff','heat','volt','sent','crdt','chain','port','chart','indx'];
             const isFullBleed = fullBleed.includes(activeView);
             const mainPad = ['news','options'].includes(activeView) || isFullBleed ? 'p-0' : 'p-4';
             return (
@@ -391,8 +513,11 @@ function IndexInner() {
           })()}
         </div>
       </div>
+      <NewsRibbon />
       <BloombergFKeyBar onLaunchpad={() => setActiveView('launchpad')} />
+      <StatusRibbon conn="live" />
       {showAddModal && <AddTradeModal onClose={() => setShowAddModal(false)} />}
+      {showHelpOverlay && <HelpOverlay onClose={() => setShowHelpOverlay(false)} />}
       <EconCalendarOverlay />
       <CommandPalette />
     </div>

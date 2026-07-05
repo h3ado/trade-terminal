@@ -71,22 +71,38 @@ const SESSIONS: Session[] = [
   { city: 'NEW YORK',tz: -4, openH: 13, closeH: 22 },
 ];
 
+const fire = (code: string) =>
+  window.dispatchEvent(new CustomEvent('lovable:cli-execute', { detail: { code } }));
+
+const RISK_NAV: Record<string, string> = {
+  VIX: 'VIX', MOVE: 'ECST', CVIX: 'FXC', GOLD: 'GOLD', WTI: 'WTI',
+  US10Y: 'ECST', US2Y: 'ECST', BTC: 'BTC',
+};
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function PanelHdr({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
+function PanelHdr({ children, right, onDrillDown }: { children: React.ReactNode; right?: React.ReactNode; onDrillDown?: () => void }) {
   return (
-    <div className="flex items-center justify-between px-2 py-[3px] border-b border-border/60 bg-surface-elevated shrink-0">
+    <div className="flex items-center justify-between px-2 py-[3px] border-b border-border shrink-0">
       <span className="text-[8px] text-accent font-bold uppercase tracking-widest">{children}</span>
-      {right && <span className="text-[8px] text-muted-foreground">{right}</span>}
+      <div className="flex items-center gap-2">
+        {right && <span className="text-[8px] text-muted-foreground">{right}</span>}
+        {onDrillDown && (
+          <button onClick={onDrillDown} className="text-[7px] text-accent/50 hover:text-accent uppercase tracking-wider transition-colors">MORE →</button>
+        )}
+      </div>
     </div>
   );
 }
 
-function CcyBar({ ccy, pct, maxAbs = 2 }: { ccy: string; pct: number; maxAbs?: number }) {
+function CcyBar({ ccy, pct, maxAbs = 2, onClick }: { ccy: string; pct: number; maxAbs?: number; onClick?: () => void }) {
   const frac = Math.min(1, Math.abs(pct) / maxAbs);
   const isPos = pct >= 0;
   return (
-    <div className="flex items-center gap-1 py-[2px] border-b border-border/20">
+    <div
+      className={`flex items-center gap-1 py-[2px] border-b border-border/20 ${onClick ? 'cursor-pointer hover:bg-white/[0.04] transition-colors' : ''}`}
+      onClick={onClick}
+    >
       <span className="w-7 text-[9px] text-accent font-bold shrink-0 tabular-nums">{ccy}</span>
       <div className="flex-1 flex items-center h-2.5">
         <div className="flex-1 flex justify-end">
@@ -165,7 +181,11 @@ export default function FXHome() {
             const ch   = k.dxy ? -0.27  : k.inv ? -chgOf(k.sym)    : chgOf(k.sym);
             const dig  = k.sym === 'JPY' || k.sym === 'CNY' ? 2 : k.dxy ? 2 : 4;
             return (
-              <div key={k.l} className="flex flex-col justify-center px-3 py-1 border-r border-border/40 last:border-r-0 shrink-0">
+              <button
+                key={k.l}
+                onClick={() => fire(k.sym)}
+                className="flex flex-col justify-center px-3 py-1 border-r border-border/40 last:border-r-0 shrink-0 hover:bg-white/[0.04] transition-colors cursor-pointer"
+              >
                 <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{k.l}</div>
                 <div className="text-[13px] font-bold text-foreground tabular-nums leading-tight">
                   {redact(spot.toFixed(dig))}
@@ -173,14 +193,18 @@ export default function FXHome() {
                 <div className={`text-[8px] font-semibold tabular-nums ${ch >= 0 ? 'text-positive' : 'text-negative'}`}>
                   {ch >= 0 ? '▲' : '▼'}{Math.abs(ch).toFixed(2)}%
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
         {/* Risk indicators */}
         <div className="flex shrink-0">
           {RISK.map(r => (
-            <div key={r.l} className="flex flex-col justify-center px-3 py-1 border-r border-border/40 last:border-r-0 shrink-0">
+            <button
+              key={r.l}
+              onClick={() => fire(RISK_NAV[r.l] || r.l)}
+              className="flex flex-col justify-center px-3 py-1 border-r border-border/40 last:border-r-0 shrink-0 hover:bg-white/[0.04] transition-colors cursor-pointer"
+            >
               <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{r.l}</div>
               <div className="text-[13px] font-bold text-foreground tabular-nums leading-tight">
                 {redact(r.v.toFixed(r.d))}
@@ -188,7 +212,7 @@ export default function FXHome() {
               <div className={`text-[8px] font-semibold tabular-nums ${r.chg >= 0 ? 'text-positive' : 'text-negative'}`}>
                 {r.chg >= 0 ? '▲' : '▼'}{r.bps ? `${Math.abs(r.chg * 100).toFixed(1)}bp` : `${Math.abs(r.chg).toFixed(2)}%`}
               </div>
-            </div>
+            </button>
           ))}
         </div>
         {/* Live indicator */}
@@ -227,26 +251,30 @@ export default function FXHome() {
 
           {/* G10 Performance */}
           <div className="flex-1 min-h-0 border-b border-border flex flex-col">
-            <PanelHdr right={`vs ${base}`}>G10 Perf · 1D</PanelHdr>
+            <PanelHdr right={`vs ${base}`} onDrillDown={() => fire('FXC')}>G10 Perf · 1D</PanelHdr>
             <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1">
-              {g10Sorted.map(r => <CcyBar key={r.ccy} ccy={r.ccy} pct={r.d} maxAbs={g10MaxAbs} />)}
+              {g10Sorted.map(r => <CcyBar key={r.ccy} ccy={r.ccy} pct={r.d} maxAbs={g10MaxAbs} onClick={() => fire(r.ccy)} />)}
             </div>
           </div>
 
           {/* EM Performance */}
           <div className="flex-1 min-h-0 border-b border-border flex flex-col">
-            <PanelHdr right={`vs ${base}`}>EM Perf · 1D</PanelHdr>
+            <PanelHdr right={`vs ${base}`} onDrillDown={() => fire('FXC')}>EM Perf · 1D</PanelHdr>
             <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1">
-              {emSorted.map(r => <CcyBar key={r.ccy} ccy={r.ccy} pct={r.d} maxAbs={emMaxAbs} />)}
+              {emSorted.map(r => <CcyBar key={r.ccy} ccy={r.ccy} pct={r.d} maxAbs={emMaxAbs} onClick={() => fire(r.ccy)} />)}
             </div>
           </div>
 
           {/* Carry & CFTC */}
           <div className="shrink-0 border-b border-border flex flex-col">
-            <PanelHdr>Top Carry · 1Y</PanelHdr>
+            <PanelHdr onDrillDown={() => fire('FXC')}>Top Carry · 1Y</PanelHdr>
             <div className="px-2 py-1">
               {carry.map(c => (
-                <div key={c.ccy} className="flex justify-between items-center py-[2px] border-b border-border/20">
+                <div
+                  key={c.ccy}
+                  onClick={() => fire(c.ccy)}
+                  className="flex justify-between items-center py-[2px] border-b border-border/20 cursor-pointer hover:bg-white/[0.04] transition-colors"
+                >
                   <span className="text-[9px] text-foreground font-semibold">{c.ccy}</span>
                   <span className={`text-[9px] tabular-nums font-bold ${c.c1y >= 0 ? 'text-positive' : 'text-negative'}`}>
                     {c.c1y >= 0 ? '+' : ''}{c.c1y.toFixed(2)}%
@@ -258,12 +286,16 @@ export default function FXHome() {
 
           {/* CFTC Positioning */}
           <div className="flex-1 min-h-0 flex flex-col">
-            <PanelHdr>CFTC Net Spec · % OI</PanelHdr>
+            <PanelHdr onDrillDown={() => fire('FXC')}>CFTC Net Spec · % OI</PanelHdr>
             <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1">
               {POSITIONING.map(p => {
                 const frac = Math.min(1, Math.abs(p.net) / 50);
                 return (
-                  <div key={p.p} className="flex items-center gap-1.5 py-[2px] border-b border-border/20">
+                  <div
+                    key={p.p}
+                    onClick={() => fire(p.p)}
+                    className="flex items-center gap-1.5 py-[2px] border-b border-border/20 cursor-pointer hover:bg-white/[0.04] transition-colors"
+                  >
                     <span className="w-7 text-[9px] text-foreground font-bold shrink-0">{p.p}</span>
                     <div className="flex-1 flex items-center h-2.5">
                       <div className="flex-1 flex justify-end">
@@ -289,7 +321,7 @@ export default function FXHome() {
 
           {/* Cross Heatmap */}
           <div className="flex-1 min-h-0 border-b border-border flex flex-col">
-            <PanelHdr>G10 Cross-Rate Heatmap · 1D %</PanelHdr>
+            <PanelHdr onDrillDown={() => fire('FXC')}>G10 Cross-Rate Heatmap · 1D %</PanelHdr>
             <div className="flex-1 min-h-0 overflow-auto px-2 py-1">
               <table className="w-full table-fixed text-[9px]">
                 <thead>
@@ -328,7 +360,7 @@ export default function FXHome() {
 
           {/* Cross-Asset Correlation */}
           <div className="flex-1 min-h-0 flex flex-col">
-            <PanelHdr>Cross-Asset ρ · 30D</PanelHdr>
+            <PanelHdr onDrillDown={() => fire('FXC')}>Cross-Asset ρ · 30D</PanelHdr>
             <div className="flex-1 min-h-0 overflow-auto px-2 py-1">
               <table className="w-full table-fixed text-[9px]">
                 <thead>
@@ -368,10 +400,14 @@ export default function FXHome() {
 
           {/* Central Bank Wire */}
           <div className="flex-[5] min-h-0 border-b border-border flex flex-col">
-            <PanelHdr>Central Bank Wire</PanelHdr>
+            <PanelHdr onDrillDown={() => fire('FED')}>Central Bank Wire</PanelHdr>
             <div className="flex-1 min-h-0 overflow-y-auto">
               {CB_WIRE.map((h, i) => (
-                <div key={i} className="flex gap-2 px-2 py-1.5 border-b border-border/30 hover:bg-surface-elevated">
+                <div
+                  key={i}
+                  onClick={() => fire('FED')}
+                  className="flex gap-2 px-2 py-1.5 border-b border-border/30 hover:bg-white/[0.04] cursor-pointer transition-colors"
+                >
                   <span className="text-[8px] text-muted-foreground tabular-nums w-8 shrink-0 pt-[1px]">{h.t}</span>
                   <span className="text-[8px] text-accent font-bold w-7 shrink-0 pt-[1px]">{h.cb}</span>
                   <span className="text-[9px] text-foreground leading-snug flex-1">{h.h}</span>
@@ -382,7 +418,7 @@ export default function FXHome() {
 
           {/* Economic Calendar */}
           <div className="flex-[5] min-h-0 border-b border-border flex flex-col">
-            <PanelHdr right="TODAY">Econ Calendar · High Impact</PanelHdr>
+            <PanelHdr right="TODAY" onDrillDown={() => fire('ECO')}>Econ Calendar · High Impact</PanelHdr>
             <div className="flex-1 min-h-0 overflow-y-auto">
               <table className="w-full text-[9px]">
                 <thead className="sticky top-0 bg-surface-deep">
@@ -396,7 +432,7 @@ export default function FXHome() {
                 </thead>
                 <tbody>
                   {EVENTS.map((e, i) => (
-                    <tr key={i} className="border-b border-border/20 hover:bg-surface-elevated">
+                    <tr key={i} onClick={() => fire('ECO')} className="border-b border-border/20 hover:bg-white/[0.04] cursor-pointer transition-colors">
                       <td className="px-2 py-1 text-muted-foreground tabular-nums">{e.t}</td>
                       <td className="px-1 py-1 text-accent font-bold">{e.cc}</td>
                       <td className="px-1 py-1 text-foreground">
