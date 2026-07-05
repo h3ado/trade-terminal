@@ -24,7 +24,7 @@ export const optionsModules: OptionsModuleDef[] = [
   { id: 'sent', code: 'SENT', label: 'Sentiment', group: 'FLOW', fkey: 'F9', aliases: ['SENTI'] },
   { id: 'grk', code: 'GRK', label: 'Greeks Book', group: 'STRATEGY', aliases: ['GREEK'], defaultSub: 'agg', subTabs: [{ id: 'agg', label: 'Aggregate' }, { id: 'expiry', label: 'By Expiry' }, { id: 'scenario', label: 'Scenario' }] },
   { id: 'qscr', code: 'QSCR', label: 'Q-Scores', group: 'SCAN', aliases: ['QSC'] },
-  { id: 'scan', code: 'SCAN', label: 'Screener', group: 'SCAN', aliases: ['SCRN'] },
+  { id: 'scan', code: 'SCAN', label: 'Screener', group: 'SCAN', aliases: ['OPTSC'] },
   { id: 'uoa', code: 'UOA', label: 'Unusual Flow', group: 'FLOW' },
   { id: 'earn', code: 'EARN', label: 'Earnings Play', group: 'STRATEGY' },
   { id: 'varb', code: 'VARB', label: 'Vol Arb Lab', group: 'VOLATILITY' },
