@@ -358,7 +358,7 @@ function ActivityTab({ d }: { d: OnChainData }) {
           </div>
         </div>
         <div className="p-3">
-          <div className="text-[7px] font-mono text-accent uppercase tracking-widest mb-1">Large Tx Count (>100 {d.asset}) — 30d</div>
+          <div className="text-[7px] font-mono text-accent uppercase tracking-widest mb-1">Large Tx Count ({'>'}100 {d.asset}) — 30d</div>
           <div className="text-[18px] font-mono font-bold text-foreground">{d.large_tx_count.toLocaleString()}</div>
           <div className="mt-2 h-[120px]">
             <ResponsiveContainer width="100%" height="100%">
