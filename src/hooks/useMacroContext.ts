@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiGet } from '@/lib/api';
 
 interface MacroItem { key: string; label: string; value: number | null; unit: string; change: number | null; }
 
@@ -6,18 +7,14 @@ const cache = new Map<string, { ts: number; items: MacroItem[] }>();
 const TTL = 5 * 60_000;
 
 async function fetchEia(): Promise<MacroItem[]> {
-  const r = await fetch('/api/market/macro/eia-energy');
-  if (!r.ok) return [];
-  const d = await r.json();
+  const d = await apiGet<{ indicators?: any[] }>('/api/market/macro/eia-energy').catch(() => ({ indicators: [] }));
   return (d.indicators ?? [])
     .filter((i: any) => ['wti', 'brent', 'henry_hub'].includes(i.key))
     .map((i: any) => ({ key: i.key, label: i.key === 'henry_hub' ? 'NatGas' : i.key.toUpperCase(), value: i.value, unit: i.unit === '$/bbl' ? '/bbl' : '/MMBtu', change: i.change }));
 }
 
 async function fetchFred(): Promise<MacroItem[]> {
-  const r = await fetch('/api/market/macro/fred-indicators');
-  if (!r.ok) return [];
-  const d = await r.json();
+  const d = await apiGet<{ indicators?: any[] }>('/api/market/macro/fred-indicators').catch(() => ({ indicators: [] }));
   return (d.indicators ?? [])
     .filter((i: any) => ['cpi_yoy', 'fed_funds', 'unemployment'].includes(i.key))
     .map((i: any) => ({

@@ -1,4 +1,5 @@
 import prisma from './prisma';
+import type { Prisma } from '@prisma/client';
 
 // ─── TTLs ─────────────────────────────────────────────────────────────────────
 
@@ -181,10 +182,11 @@ export async function getFundamentals(ticker: string): Promise<Record<string, un
 
 export async function saveFundamentals(ticker: string, data: Record<string, unknown>): Promise<void> {
   const source = (data._source as string) ?? 'unknown';
+  const json = data as Prisma.InputJsonObject;
   await prisma.marketFundamentals.upsert({
     where: { ticker },
-    update: { data: data as any, source, fetchedAt: new Date() },
-    create: { ticker, data: data as any, source },
+    update: { data: json, source, fetchedAt: new Date() },
+    create: { ticker, data: json, source },
   }).catch(e => console.error('[marketStore] saveFundamentals error:', e));
 }
 
@@ -197,10 +199,11 @@ export async function getPeers(ticker: string): Promise<Record<string, unknown>[
 }
 
 export async function savePeers(ticker: string, peers: Record<string, unknown>[], source = 'unknown'): Promise<void> {
+  const json = peers as Prisma.InputJsonArray;
   await prisma.marketPeers.upsert({
     where: { ticker },
-    update: { peers: peers as any, source, fetchedAt: new Date() },
-    create: { ticker, peers: peers as any, source },
+    update: { peers: json, source, fetchedAt: new Date() },
+    create: { ticker, peers: json, source },
   }).catch(e => console.error('[marketStore] savePeers error:', e));
 }
 

@@ -1,4 +1,4 @@
-// Launchpad state: free-grid workspaces, persisted to localStorage with v1→v2 migration.
+// Launchpad state: free-grid workspaces, persisted to localStorage with legacy-key migration.
 import { useEffect, useState, useCallback } from 'react';
 
 export interface GridItem {
@@ -33,8 +33,9 @@ interface State {
   workspaces: Workspace[];
 }
 
-const KEY = 'lovable:launchpad:v2';
-const LEGACY_KEY = 'lovable:launchpad:v1';
+const KEY = 'trade-terminal:launchpad:v2';
+const LEGACY_V2_KEY = 'lovable:launchpad:v2';
+const LEGACY_V1_KEY = 'lovable:launchpad:v1';
 export const GRID_COLS = 12;
 export const DEFAULT_CFG: GridCfg = { cols: 12, rowHeight: 32, margin: 4 };
 
@@ -114,7 +115,7 @@ const DEFAULT_STATE: State = {
 
 function migrateV1(): State | null {
   try {
-    const raw = localStorage.getItem(LEGACY_KEY);
+    const raw = localStorage.getItem(LEGACY_V1_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed?.tiles)) return null;
@@ -143,23 +144,35 @@ function normalize(ws: Workspace): Workspace {
   return { ...ws, gridCfg: ws.gridCfg ?? { ...DEFAULT_CFG } };
 }
 
+function parseStoredState(raw: string | null): State | null {
+  if (!raw) return null;
+  const parsed = JSON.parse(raw) as State;
+  if (parsed.activeId && Array.isArray(parsed.workspaces) && parsed.workspaces.length > 0) {
+    const existingIds = new Set(parsed.workspaces.map(w => w.id));
+    const additions = DEFAULT_WORKSPACES.filter(d => !existingIds.has(d.id));
+    return {
+      activeId: parsed.activeId,
+      workspaces: [...parsed.workspaces.map(normalize), ...additions],
+    };
+  }
+  return null;
+}
+
 function load(): State {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as State;
-      if (parsed.activeId && Array.isArray(parsed.workspaces) && parsed.workspaces.length > 0) {
-        // Merge in any newer default presets the user doesn't have yet
-        const existingIds = new Set(parsed.workspaces.map(w => w.id));
-        const additions = DEFAULT_WORKSPACES.filter(d => !existingIds.has(d.id));
-        return {
-          activeId: parsed.activeId,
-          workspaces: [...parsed.workspaces.map(normalize), ...additions],
-        };
+    for (const storageKey of [KEY, LEGACY_V2_KEY]) {
+      const raw = localStorage.getItem(storageKey);
+      const parsed = parseStoredState(raw);
+      if (parsed) {
+        if (storageKey !== KEY && raw) localStorage.setItem(KEY, raw);
+        return parsed;
       }
     }
   } catch {}
   const migrated = migrateV1();
+  if (migrated) {
+    try { localStorage.setItem(KEY, JSON.stringify(migrated)); } catch {}
+  }
   return migrated || DEFAULT_STATE;
 }
 

@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { MacroTab, macroTabs } from '@/components/TopNav';
-import { FxTab, fxTabs } from '@/components/ForexNav';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { type MacroTab, macroTabs } from '@/config/views';
+import { fxTabs, type FxTab } from '@/config/fx';
+import { optionsModules } from '@/config/options';
 import { CryptoTab, cryptoTabs } from '@/components/CryptoNav';
 import { PrivacyProvider, usePrivacy } from '@/contexts/PrivacyContext';
 import { MacroCountryProvider } from '@/contexts/MacroCountryContext';
@@ -15,7 +16,6 @@ import ForexNav from '@/components/ForexNav';
 import CryptoNav from '@/components/CryptoNav';
 import ToolsPanel from '@/components/ToolsPanel';
 import NavBreadcrumb from '@/components/NavBreadcrumb';
-import TradingCmdBar from '@/components/TradingCmdBar';
 import DashboardView from '@/components/views/DashboardView';
 import TradesView from '@/components/views/TradesView';
 import AnalyticsView from '@/components/views/AnalyticsView';
@@ -70,12 +70,6 @@ import OnChainView from '@/components/views/OnChainView';
 import PortfolioRiskView from '@/components/views/PortfolioRiskView';
 import ChartView from '@/components/views/ChartView';
 import MarketIndicatorsView from '@/components/views/MarketIndicatorsView';
-import EconSurpriseView from '@/components/views/EconSurpriseView';
-import CorporateActionsView from '@/components/views/CorporateActionsView';
-import DarkPoolView from '@/components/views/DarkPoolView';
-import AlertManagerView from '@/components/views/AlertManagerView';
-import ScreenerView from '@/components/views/ScreenerView';
-import ResearchView from '@/components/views/ResearchView';
 import { useNavHistory } from '@/hooks/useNavHistory';
 import type { EarnFilter } from '@/hooks/useEarningsCalendar';
 import type { NewsScope } from '@/hooks/useGdeltNews';
@@ -181,18 +175,39 @@ function buildTrail(view: ViewType, macroTab: MacroTab, fxTab: FxTab, cryptoTab:
   return { trail: [VIEW_LABELS[view]], label: VIEW_LABELS[view] };
 }
 
+const isView = (v: string | null): v is ViewType => !!v && Object.prototype.hasOwnProperty.call(VIEW_LABELS, v);
+const isMacroTab = (v: string | null): v is MacroTab => !!v && macroTabs.some(t => t.id === v);
+const isFxTab = (v: string | null): v is FxTab => !!v && fxTabs.some(t => t.id === v);
+const isOptionsTab = (v: string | null): v is OptionsTab => !!v && optionsModules.some(t => t.id === v);
+
 function IndexInner() {
-  const [activeView, setActiveView] = useState<ViewType>('launchpad');
+  const urlState = useMemo(() => {
+    const qs = new URLSearchParams(window.location.search);
+    const view = isView(qs.get('view')) ? qs.get('view') as ViewType : 'launchpad';
+    return {
+      view,
+      macroTab: isMacroTab(qs.get('macro')) ? qs.get('macro') as MacroTab : 'overview',
+      fxTab: isFxTab(qs.get('fx')) ? qs.get('fx') as FxTab : 'home',
+      securityTicker: (qs.get('ticker') || 'AAPL').toUpperCase(),
+      optionsArgs: {
+        tab: isOptionsTab(qs.get('tab')) ? qs.get('tab') as OptionsTab : 'dash',
+        ticker: (qs.get('ticker') || 'SPY').toUpperCase(),
+        sub: qs.get('sub') || undefined,
+      },
+    };
+  }, []);
+
+  const [activeView, setActiveView] = useState<ViewType>(urlState.view);
   const [toolsCollapsed, setToolsCollapsed] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showHelpOverlay, setShowHelpOverlay] = useState(false);
   const [toolsWidth, setToolsWidth] = useState(320);
-  const [macroTab, setMacroTab] = useState<MacroTab>('overview');
-  const [fxTab, setFxTab] = useState<FxTab>('home');
+  const [macroTab, setMacroTab] = useState<MacroTab>(urlState.macroTab);
+  const [fxTab, setFxTab] = useState<FxTab>(urlState.fxTab);
   const [cryptoTab, setCryptoTab] = useState<CryptoTab>('home');
-  const [securityTicker, setSecurityTicker] = useState<string>('AAPL');
+  const [securityTicker, setSecurityTicker] = useState<string>(urlState.securityTicker);
   const [newsArgs, setNewsArgs] = useState<{ scope: NewsScope; value: string; ai: boolean; topic?: string; pinOnly?: boolean; sort?: 'recent' | 'velocity'; source?: 'all' | 'x' | 'potus' | 'fed'; rightPane?: 'detail' | 'map' | 'heat' }>({ scope: 'global', value: '', ai: false });
-  const [optionsArgs, setOptionsArgs] = useState<{ tab: OptionsTab; ticker: string; sub?: string; earnFilter?: import('@/hooks/useEarningsCalendar').EarnFilter }>({ tab: 'dash', ticker: 'SPY' });
+  const [optionsArgs, setOptionsArgs] = useState<{ tab: OptionsTab; ticker: string; sub?: string; earnFilter?: import('@/hooks/useEarningsCalendar').EarnFilter }>(urlState.optionsArgs);
   const [earnArgs, setEarnArgs] = useState<{ ticker: string; filter?: EarnFilter }>({ ticker: 'AAPL' });
   const [chartTicker, setChartTicker] = useState('AAPL');
   const [rschArgs, setRschArgs] = useState<{ ticker?: string; query?: string }>({});
@@ -204,10 +219,14 @@ function IndexInner() {
   const startWidthRef = useRef(0);
 
   const initial = useMemo(() => {
-    const { trail, label } = buildTrail('launchpad', 'overview', 'home', 'home');
-    return { view: 'launchpad' as ViewType, macroTab: 'overview' as MacroTab, fxTab: 'home' as FxTab, cryptoTab: 'home' as CryptoTab, label, trail };
-  }, []);
+    const { trail, label } = buildTrail(urlState.view, urlState.macroTab, urlState.fxTab, 'home');
+    return { view: urlState.view, macroTab: urlState.macroTab, fxTab: urlState.fxTab, cryptoTab: 'home' as CryptoTab, label, trail };
+  }, [urlState]);
   const nav = useNavHistory(initial);
+
+  const navigate = useCallback((view: ViewType) => {
+    setActiveView(view);
+  }, []);
 
   // Push every nav change into history + trigger progress bar.
   useEffect(() => {
@@ -216,6 +235,21 @@ function IndexInner() {
     setProgressKey(k => k + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView, macroTab, fxTab, cryptoTab]);
+
+  // Keep the URL in sync so views are shareable/bookmarkable.
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    qs.set('view', activeView);
+    if (activeView === 'macro') qs.set('macro', macroTab);
+    if (activeView === 'forex') qs.set('fx', fxTab);
+    if (activeView === 'options') {
+      qs.set('tab', optionsArgs.tab);
+      qs.set('ticker', optionsArgs.ticker);
+      if (optionsArgs.sub) qs.set('sub', optionsArgs.sub);
+    }
+    if (activeView === 'security') qs.set('ticker', securityTicker);
+    window.history.replaceState(null, '', `/?${qs.toString()}`);
+  }, [activeView, macroTab, fxTab, optionsArgs, securityTicker]);
 
   // Sync back/forward changes from history -> local state.
   useEffect(() => {
@@ -443,7 +477,7 @@ function IndexInner() {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      <TerminalHeader onAddTrade={() => setShowAddModal(true)} onNavigate={setActiveView} onMacroTab={setMacroTab} onFxTab={(t) => { setFxTab(t); setActiveView('forex'); }} onCryptoTab={(t) => { setCryptoTab(t); setActiveView('crypto'); }} />
+      <TerminalHeader onAddTrade={() => setShowAddModal(true)} onNavigate={navigate} onMacroTab={setMacroTab} onFxTab={(t) => { setFxTab(t); navigate('forex'); }} onCryptoTab={(t) => { setCryptoTab(t); navigate('crypto'); }} />
       <NavBreadcrumb
         trail={nav.current?.trail ?? ['Dashboard']}
         canBack={nav.canBack}
@@ -485,7 +519,7 @@ function IndexInner() {
             return (
               <>
                 {!isFullBleed && (
-                  <TopNav activeView={activeView} onViewChange={setActiveView} activeMacroTab={macroTab} onMacroTabChange={setMacroTab} />
+                  <TopNav activeView={activeView} onViewChange={navigate} activeMacroTab={macroTab} onMacroTabChange={setMacroTab} />
                 )}
                 {activeView === 'forex' && (
                   <ForexNav activeTab={fxTab} onTabChange={setFxTab} />
@@ -514,7 +548,7 @@ function IndexInner() {
         </div>
       </div>
       <NewsRibbon />
-      <BloombergFKeyBar onLaunchpad={() => setActiveView('launchpad')} />
+      <BloombergFKeyBar onLaunchpad={() => navigate('launchpad')} />
       <StatusRibbon conn="live" />
       {showAddModal && <AddTradeModal onClose={() => setShowAddModal(false)} />}
       {showHelpOverlay && <HelpOverlay onClose={() => setShowHelpOverlay(false)} />}

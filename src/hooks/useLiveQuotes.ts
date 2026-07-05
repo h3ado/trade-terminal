@@ -4,6 +4,7 @@
  * chunked to stay under Twelve Data's per-call symbol cap.
  */
 import { useEffect, useState } from 'react';
+import { apiPost } from '@/lib/api';
 
 export type LiveQuote = { price: number; change: number; pct: number };
 
@@ -22,15 +23,10 @@ export function useLiveQuotes(tickers: string[]) {
     const load = async () => {
       try {
         const out: Record<string, LiveQuote> = {};
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/twelve-quotes`;
-        const auth = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
         for (let i = 0; i < tickers.length; i += CHUNK) {
-          const slice = tickers.slice(i, i + CHUNK).filter(Boolean).join(',');
-          if (!slice) continue;
-          const r = await fetch(`${url}?symbols=${encodeURIComponent(slice)}`, {
-            headers: { Authorization: `Bearer ${auth}`, apikey: auth },
-          });
-          const data = await r.json();
+          const symbols = tickers.slice(i, i + CHUNK).filter(Boolean);
+          if (!symbols.length) continue;
+          const data = await apiPost<{ quotes?: Record<string, LiveQuote> }>('/api/market/forex/twelve-quotes', { symbols });
           Object.assign(out, data?.quotes ?? {});
         }
         if (!cancelled) {

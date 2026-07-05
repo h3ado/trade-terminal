@@ -4,7 +4,7 @@ import { useUserPreference } from './useUserPreference';
 /**
  * A snapshot of every part of the globe state we want to persist & recall.
  * Kept loose (`any`) for layers/camera so we don't have to thread the exact
- * `LayerState` and three.js types through Supabase JSON.
+ * `LayerState` and three.js types through persisted preference JSON.
  */
 export interface SavedView {
   /** Stable ID. Numbered slots use 'slot-1'..'slot-9'; names use 'name-<slug>'. */

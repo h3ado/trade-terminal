@@ -19,6 +19,7 @@ import IntradayGexChart from '@/components/options/IntradayGexChart';
 import OIExpiryDonut from '@/components/options/OIExpiryDonut';
 import SideBySideChain from '@/components/options/SideBySideChain';
 import OptionsModuleRail, { OPTIONS_MODULES } from '@/components/options/OptionsModuleRail';
+import { optionFKeyMap, optionSubTabs } from '@/config/options';
 import OptionsSubTabs from '@/components/options/OptionsSubTabs';
 import SpreadBuilder from '@/components/options/SpreadBuilder';
 import CharmVannaHeatmap from '@/components/options/CharmVannaHeatmap';
@@ -53,44 +54,10 @@ interface Props {
   initialEarnFilter?: EarnFilter;
 }
 
-// Per-module sub-tabs. Empty array means no sub-strip.
-const SUB_TABS: Record<OptionsTab, { id: string; label: string }[]> = {
-  dash:  [],
-  omon:  [{ id: 'matrix', label: 'Matrix' }, { id: 'chain', label: 'Side-by-Side' }, { id: 'spread', label: 'Spread Builder' }],
-  gamma: [],
-  gex:   [{ id: 'cockpit', label: 'Cockpit' }, { id: 'profile', label: 'Profile' }, { id: 'intraday', label: 'Intraday' }, { id: 'oi', label: 'OI by Expiry' }, { id: 'vanna_p', label: 'Vanna Profile' }, { id: 'charm_p', label: 'Charm Profile' }, { id: 'charm', label: 'Charm Heat' }, { id: 'vanna', label: 'Vanna Heat' }],
-  dpi:   [],
-  ovme:  [
-    { id: 'pricing',  label: 'Pricing' },
-    { id: 'greeks',   label: 'Greeks' },
-    { id: 'strategy', label: 'Strategy' },
-    { id: 'surface',  label: '3D Surface' },
-    { id: 'matrix',   label: 'Matrix' },
-    { id: 'skew',     label: 'Skew' },
-    { id: 'term',     label: 'Term Struct' },
-    { id: 'btest',    label: 'Backtest' },
-  ],
-  maxp:  [{ id: 'current', label: 'Current' }, { id: 'drift', label: 'Drift' }],
-  pay:   [{ id: 'single', label: 'Single-leg' }, { id: 'greeks', label: 'Greeks vs Spot' }, { id: 'heat', label: 'P&L Heatmap' }],
-  flow:  [],
-  sent:  [],
-  grk:   [{ id: 'agg', label: 'Aggregate' }, { id: 'expiry', label: 'By Expiry' }, { id: 'scenario', label: 'Scenario' }],
-  qscr:  [],
-  scan:  [],
-  uoa:   [],
-  earn:  [],
-  varb:  [],
-};
-
-const FKEY_MAP: Record<string, OptionsTab> = {
-  F1: 'dash', F2: 'omon', F3: 'gamma', F4: 'gex',
-  F5: 'ovme', F6: 'maxp', F7: 'pay', F8: 'flow', F9: 'sent', F10: 'dpi',
-};
-
 function OptionsViewInner({ initialTab = 'dash', initialTicker = 'SPY', initialSub, initialEarnFilter }: Props) {
   const { privacyMode } = usePrivacy();
   const [tab, setTab] = useState<OptionsTab>(initialTab);
-  const [sub, setSub] = useState<string>(initialSub ?? SUB_TABS[initialTab]?.[0]?.id ?? '');
+  const [sub, setSub] = useState<string>(initialSub ?? optionSubTabs[initialTab]?.[0]?.id ?? '');
   const [ticker, setTicker] = useState(initialTicker);
   const [tickerInput, setTickerInput] = useState(initialTicker);
   const [copilotOpen, setCopilotOpen] = useState(false);
@@ -99,7 +66,7 @@ function OptionsViewInner({ initialTab = 'dash', initialTicker = 'SPY', initialS
 
   useEffect(() => { if (initialEarnFilter) setEarnFilter(initialEarnFilter); }, [initialEarnFilter]);
 
-  useEffect(() => { setTab(initialTab); setSub(initialSub ?? SUB_TABS[initialTab]?.[0]?.id ?? ''); }, [initialTab, initialSub]);
+  useEffect(() => { setTab(initialTab); setSub(initialSub ?? optionSubTabs[initialTab]?.[0]?.id ?? ''); }, [initialTab, initialSub]);
   useEffect(() => {
     if (initialTicker) {
       setTicker(initialTicker);
@@ -110,7 +77,7 @@ function OptionsViewInner({ initialTab = 'dash', initialTicker = 'SPY', initialS
   // Reset sub-tab when switching module
   const selectModule = (id: OptionsTab) => {
     setTab(id);
-    setSub(SUB_TABS[id]?.[0]?.id ?? '');
+    setSub(optionSubTabs[id]?.[0]?.id ?? '');
   };
 
   useEffect(() => {
@@ -118,10 +85,10 @@ function OptionsViewInner({ initialTab = 'dash', initialTicker = 'SPY', initialS
       const target = e.target as HTMLElement | null;
       const inField = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
       if (e.key === '?' && !inField) { e.preventDefault(); setCopilotOpen(o => !o); return; }
-      if (!FKEY_MAP[e.key]) return;
+      if (!optionFKeyMap[e.key]) return;
       if (inField) return;
       e.preventDefault();
-      selectModule(FKEY_MAP[e.key]);
+      selectModule(optionFKeyMap[e.key]);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -238,7 +205,7 @@ function OptionsViewInner({ initialTab = 'dash', initialTicker = 'SPY', initialS
   };
 
   const activeModule = OPTIONS_MODULES.find((m) => m.id === tab);
-  const subTabs = SUB_TABS[tab] ?? [];
+  const subTabs = optionSubTabs[tab] ?? [];
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-background overflow-hidden">
@@ -287,7 +254,7 @@ function OptionsViewInner({ initialTab = 'dash', initialTicker = 'SPY', initialS
       <div className="flex items-center gap-3 border-t border-border bg-surface-deep px-2 py-0.5 flex-shrink-0 text-[9px] font-mono text-muted-foreground overflow-x-auto uppercase tracking-wider">
         <span className="text-muted-foreground/60">{activeModule?.code} &lt;GO&gt;</span>
         <span className="text-muted-foreground/40">·</span>
-        {Object.entries(FKEY_MAP).map(([fk, id]) => {
+        {Object.entries(optionFKeyMap).map(([fk, id]) => {
           const m = OPTIONS_MODULES.find((x) => x.id === id);
           if (!m) return null;
           return (

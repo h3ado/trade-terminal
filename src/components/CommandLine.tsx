@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ViewType } from '@/types/trade';
-import { MacroTab } from '@/components/TopNav';
-import { FxTab } from '@/components/ForexNav';
+import type { MacroTab } from '@/config/views';
+import type { FxTab } from '@/config/fx';
+import { optionCodeMap } from '@/config/options';
 import { countries, MacroCountry } from '@/contexts/MacroCountryContext';
 import { useMacroCountry } from '@/contexts/MacroCountryContext';
 import { applyGlobePreset, saveGlobeView, loadGlobeView, listGlobeViews } from '@/components/globe/AdvancedGlobe';
@@ -398,46 +399,10 @@ export default function CommandLine({ onNavigate, onAddTrade, onTogglePrivacy, o
       return;
     }
 
-    // Options CLI: map command codes → { tab, sub? }. Old codes still work.
-    const OPTIONS_CODES: Record<string, { tab: import('@/types/trade').OptionsTab; sub?: string }> = {
-      // new module mnemonics
-      DASH:  { tab: 'dash' },
-      OMON:  { tab: 'omon', sub: 'matrix' },
-      GAMMA: { tab: 'gamma' },
-      GEX:   { tab: 'gex',  sub: 'profile' },
-      OVME:  { tab: 'ovme', sub: 'surface' },
-      MAXP:  { tab: 'maxp', sub: 'current' },
-      PAY:   { tab: 'pay',  sub: 'single' },
-      FLOW:  { tab: 'flow' },
-      SENT:  { tab: 'sent' },
-      GRK:   { tab: 'grk',  sub: 'agg' },
-      QSCR:  { tab: 'qscr' },
-      SCAN:  { tab: 'scan' },
-      // legacy aliases preserved
-      OPT:   { tab: 'dash' },
-      OMTX:  { tab: 'omon', sub: 'matrix' },
-      CHN:   { tab: 'omon', sub: 'chain' },
-      SPRD:  { tab: 'omon', sub: 'spread' },
-      GMA:   { tab: 'gamma' },
-      VOLS:  { tab: 'ovme', sub: 'surface' },
-      SKEW:  { tab: 'ovme', sub: 'term' },
-      SMILE: { tab: 'ovme', sub: 'smile' },
-      GXP:   { tab: 'gex',  sub: 'profile' },
-      IDG:   { tab: 'gex',  sub: 'intraday' },
-      OID:   { tab: 'gex',  sub: 'oi' },
-      CHARM: { tab: 'gex',  sub: 'charm' },
-      VANNA: { tab: 'gex',  sub: 'vanna' },
-      QSC:   { tab: 'qscr' },
-      SCRN:  { tab: 'scan' },
-      DFLO:  { tab: 'flow' },
-      SENTI: { tab: 'sent' },
-      GREEK: { tab: 'grk',  sub: 'agg' },
-      SCEN:  { tab: 'grk',  sub: 'scenario' },
-    };
-    if (OPTIONS_CODES[cmd.code]) {
+    if (optionCodeMap[cmd.code]) {
       const tokens = raw.trim().toUpperCase().split(/\s+/).slice(1);
       const ticker = tokens.find((t) => /^[A-Z]{1,6}$/.test(t)) ?? 'SPY';
-      const mapped = OPTIONS_CODES[cmd.code];
+      const mapped = optionCodeMap[cmd.code];
       window.dispatchEvent(new CustomEvent('lovable:options-args', { detail: { tab: mapped.tab, sub: mapped.sub, ticker } }));
       onNavigate('options');
       setValue(''); setShowHelp(false); inputRef.current?.blur();

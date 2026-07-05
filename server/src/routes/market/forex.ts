@@ -77,8 +77,16 @@ router.post('/twelve-quotes', async (req, res) => {
     const symbolParam = symbols.slice(0, 8).join(',');
     const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbolParam)}&apikey=${key}`;
     const r = await fetch(url);
-    const data = await r.json();
-    res.json(data);
+    const data = await r.json() as any;
+    const rows = Array.isArray(data) ? data : Object.values(data);
+    const quotes = Object.fromEntries(rows
+      .filter((q: any) => q?.symbol)
+      .map((q: any) => [q.symbol, {
+        price: Number(q.close ?? q.price ?? 0),
+        change: Number(q.change ?? 0),
+        pct: Number(q.percent_change ?? q.percentChange ?? 0),
+      }]));
+    res.json({ quotes });
   } catch (e) {
     res.status(502).json({ error: String(e) });
   }

@@ -105,7 +105,7 @@ export default function NewsQuiz() {
     return (
       <div className="h-full flex flex-col items-center justify-center font-mono text-muted-foreground gap-2 bg-background">
         <div className="text-[10px] uppercase tracking-wider text-accent animate-pulse">Generating weekly quiz…</div>
-        <div className="text-[9px]">Pulling last 7d of headlines · Lovable AI</div>
+        <div className="text-[9px]">Pulling last 7d of headlines · AI generated</div>
       </div>
     );
   }

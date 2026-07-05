@@ -10,6 +10,7 @@ const FINNHUB_KEY = () => process.env.FINNHUB_API_KEY ?? '';
 // In-memory cache for indicators only (derived from Twelve Data, not worth persisting)
 const indicatorsCache = new Map<string, { ts: number; data: Record<string, unknown> }>();
 const INDICATORS_TTL = 5 * 60_000;
+const fulfilled = <T,>(r: PromiseSettledResult<T>): r is PromiseFulfilledResult<T> => r.status === 'fulfilled';
 
 async function twelveGet(path: string, key: string): Promise<any> {
   const sep = path.includes('?') ? '&' : '?';
@@ -748,7 +749,7 @@ router.get('/:ticker/peers', async (req, res) => {
           };
         }));
         const peers = peerData
-          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+          .filter(fulfilled)
           .map(r => r.value);
         await savePeers(ticker, peers, 'finnhub');
         res.json({ peers, cached: false }); return;
@@ -766,7 +767,7 @@ router.get('/:ticker/peers', async (req, res) => {
 
     const results = await Promise.allSettled(symbols.map(fetchPeerData));
     const peers = results
-      .filter((r): r is PromiseFulfilledResult<Record<string, unknown>> => r.status === 'fulfilled')
+      .filter(fulfilled)
       .map(r => r.value);
     await savePeers(ticker, peers, 'yahoo');
     res.json({ peers, cached: false });
